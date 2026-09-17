@@ -1,0 +1,3 @@
+# Valtros lab: changelog
+- deploy notes live in one flat directory (deliberately no access control)
+- TODO: someone should really turn off autoindex ...

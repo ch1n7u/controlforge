@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --color-bg: #0a0d12;
+  --color-panel: #0f131a;
+  --color-panel2: #141922;
+  --color-raise: #1a212c;
+  --color-edge: #1f2836;
+  --color-edge2: #2b3646;
+  --color-ink: #dde4ee;
+  --color-mute: #8b98ab;
+  --color-dim: #5d6a7d;
+  --color-accent: #4c9aff;
+  --color-accent2: #2f6fca;
+
+  --color-pass: #3ecf8e;
+  --color-fail: #f45b69;
+  --color-incon: #e8b339;
+  --color-na: #8593a6;
+  --color-crit: #ff4d6d;
+  --color-high: #ff8a4c;
+  --color-med: #e8b339;
+  --color-low: #4c9aff;
+  --color-info: #8593a6;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Keyboard focus must always be visible. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge2) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-edge2);
+  border-radius: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+pre,
+code,
+.mono {
+  font-family: var(--font-mono);
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  /* Counts, durations, digests and timestamps sit in columns; lining figures
+     keep them aligned instead of shimmering as they change. */
+  font-variant-numeric: tabular-nums;
+}
+
+body {
+  -webkit-text-size-adjust: 100%;
+}

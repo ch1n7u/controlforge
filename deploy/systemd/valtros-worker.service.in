@@ -1,0 +1,53 @@
+[Unit]
+Description=Valtros worker (run queue + scan engines)
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+
+[Service]
+Type=exec
+User=@SERVICE_USER@
+Group=@SERVICE_GROUP@
+WorkingDirectory=@REPO_DIR@/backend
+EnvironmentFile=@CONF_DIR@/valtros.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@PYTHON@ -m app.worker
+
+Restart=on-failure
+RestartSec=3
+
+# --- hardening -------------------------------------------------------------
+# ProtectHome=read-only (not =yes): the application code and venv usually live
+# under /home or /root, and the unit must still be able to read them. Read-only
+# is enough - the worker writes only to the state and log directories.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=@STATE_DIR@ @LOG_DIR@
+CapabilityBoundingSet=
+AmbientCapabilities=
+# AF_NETLINK is included on purpose: nmap enumerates interfaces/routes through
+# it. It grants no egress (the firewall still only allows scope destinations).
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictRealtime=yes
+RestrictNamespaces=yes
+PrivateDevices=yes
+# KillMode=mixed: on stop, SIGTERM goes to the worker only; after the grace
+# period SIGKILL takes down everything left in the cgroup - orphaned nmap /
+# nuclei / testssl children included. This pairs with app/runner/exec.py, which
+# starts each tool in its own session (so a plain process-group kill would
+# miss them).
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

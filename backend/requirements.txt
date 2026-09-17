@@ -1,0 +1,19 @@
+# Valtros backend dependencies
+#
+# This host has no Go/Rust toolchain, so every dependency must ship a
+# prebuilt wheel. Install with:
+#     pip install --only-binary=:all: -r requirements.txt
+# which fails loudly rather than attempting a source build.
+
+fastapi>=0.118
+uvicorn[standard]>=0.38
+sqlalchemy>=2.0.54
+psycopg[binary]>=3.2.10
+alembic>=1.16
+pydantic>=2.12
+pydantic-settings>=2.7
+httpx>=0.28
+python-multipart>=0.0.20
+
+# test-only
+pytest>=8.4

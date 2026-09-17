@@ -1,0 +1,70 @@
+# Valtros site - loopback and (optionally) the machine's LAN address.
+#
+# Template. Rendered by @REPO_DIR@/install.sh with the install-time values and
+# installed as:
+#     Debian/Ubuntu/Kali   /etc/nginx/sites-available/valtros.conf
+#                          (symlinked into sites-enabled/)
+#     RHEL/Fedora/openSUSE /etc/nginx/conf.d/valtros.conf
+#     Arch                 /etc/nginx/conf.d/valtros.conf
+#
+# The LAN address is DHCP-assigned, so every line tagged "#LAN_IP" is rewritten
+# by install.sh from `ip -4 addr` on each run. With EXPOSE_LAN=no those lines
+# are dropped and the site answers on loopback only.
+#
+# The address written here is RFC 5737 TEST-NET-1 (192.0.2.0/24), which is
+# reserved for documentation and is never routable. It is a placeholder, not a
+# working value: if it survives into an installed file, install.sh either could
+# not detect an address or failed to rewrite the line, and the site is then
+# listening on nothing. That is deliberately not a real address, so a broken
+# install degrades to unreachable rather than to unexpectedly public.
+
+# Logging: the custom format below deliberately has no $http_cookie,
+# $http_authorization or $request_body field - the session cookie never
+# reaches a log file.
+log_format valtros_no_cookie
+    '$remote_addr - $remote_user [$time_local] "$request" '
+    '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
+
+server {
+    listen 127.0.0.1:80;
+    listen 192.0.2.1:80; #LAN_IP
+    server_name localhost 127.0.0.1 192.0.2.1; #LAN_IP
+    server_tokens off;
+
+    root @REPO_DIR@/frontend/dist;
+    index index.html;
+
+    access_log /var/log/nginx/valtros.access.log valtros_no_cookie;
+    error_log  /var/log/nginx/valtros.error.log warn;
+
+    # --- security headers ---------------------------------------------------
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), usb=()" always;
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header Cross-Origin-Resource-Policy "same-origin" always;
+    # Single-origin SPA: the API is reached same-origin through /api.
+    # 'unsafe-inline' applies to styles only (React inline style attributes);
+    # scripts and connections stay restricted to 'self'.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
+
+    # --- API ----------------------------------------------------------------
+    location /api {
+        proxy_pass http://@API_BIND@:@API_PORT@;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+        # Run-log streaming must not sit in a proxy buffer.
+        proxy_buffering off;
+    }
+
+    # --- SPA with history fallback ------------------------------------------
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -1,0 +1,24 @@
+[Unit]
+Description=Valtros firewall convergence (re-derive the worker egress allow-list)
+Documentation=file:@REPO_DIR@/scripts/sync_firewall.py
+
+# The ruleset is a function of the active scopes in the database, so it is
+# re-derived on a short cycle rather than only at boot.
+#
+# The API deliberately cannot trigger this itself: both application units run
+# with NoNewPrivileges=yes, which is exactly what stops sudo (and therefore any
+# setuid escalation) inside them. Rather than trade that hardening for an
+# event, the service converges on a timer. A scope change that narrows
+# authorization is consequently reflected in the kernel within one interval,
+# and a ruleset emptied by hand or by a reboot heals without intervention.
+#
+# An operator who needs the ruleset updated *now* can run:
+#     sudo systemctl start valtros-fw-sync.service
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+AccuracySec=2s
+
+[Install]
+WantedBy=timers.target

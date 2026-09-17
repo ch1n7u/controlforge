@@ -1,0 +1,106 @@
+#!/usr/sbin/nft -f
+#
+# Valtros worker egress policy.
+#
+# Threat model: the worker runs external security tools (nmap, nuclei, testssl)
+# as the dedicated uid `valtros`. Even if one of those tools is induced to
+# open a connection somewhere, the kernel only lets traffic from that uid reach:
+#
+#   1. replies on flows it already owns - so reloading this ruleset mid-scan
+#      does not kill a running scan (conntrack state survives a table reload);
+#   2. loopback PostgreSQL, tcp/5432 - its own datastore and nothing else;
+#   3. exactly the (address, port) pairs of scopes that are active and not
+#      expired, held in the four sets below.
+#
+# Everything else from that uid is dropped. There is deliberately no DNS rule:
+# engines are handed pinned IPs (app.scope.authorize resolves a name once and
+# passes addresses, never names), so the tools must not need a resolver.
+#
+# The four sets are (re)populated by scripts/sync_firewall.py, which runs from
+# the root oneshot unit valtros-fw-sync.service. The script appends
+# `add element` statements for the active scopes to this file and feeds the
+# result to a single `nft -f`, so a refresh is one atomic transaction: the
+# worker is never left without rules, not even for an instant. Loading this
+# file as it stands (empty sets) is valid and means "fail closed" - the uid may
+# talk to PostgreSQL and nothing else.
+#
+# Flush (deliberate teardown only - this returns the uid to unfiltered egress):
+#   sudo nft delete table inet valtros
+#   or: sudo /home/chintu/Valtros/scripts/sync_firewall.py --flush
+#
+# Validate syntax without loading anything:
+#   sudo nft --check -f /home/chintu/Valtros/deploy/nftables/valtros.nft
+#
+# Note: only the `valtros` uid is filtered. root, nginx (www-data) and the
+# operator are untouched, so install.sh / lifecycle scripts can always reach
+# the machine and the API can always answer on 127.0.0.1:8000.
+
+destroy table inet valtros
+
+table inet valtros {
+    # ------------------------------------------------------------------ sets
+    # Concatenated interval sets: one element is "<address range> . <port
+    # range>", so an authorization for 10.0.0.0/24 on 8080-8090 cannot be
+    # crossed with another entry's ports.
+    set allowed_v4_tcp {
+        type ipv4_addr . inet_service
+        flags interval
+        comment "active scope destinations, tcp"
+    }
+    set allowed_v4_udp {
+        type ipv4_addr . inet_service
+        flags interval
+        comment "active scope destinations, udp"
+    }
+    set allowed_v6_tcp {
+        type ipv6_addr . inet_service
+        flags interval
+        comment "active scope destinations, tcp"
+    }
+    set allowed_v6_udp {
+        type ipv6_addr . inet_service
+        flags interval
+        comment "active scope destinations, udp"
+    }
+
+    # --------------------------------------------------------------- chains
+    chain output {
+        type filter hook output priority filter; policy accept;
+
+        # (1) Keep live flows alive across ruleset reloads.
+        meta skuid valtros ct state established,related accept
+
+        # (2) Loopback PostgreSQL only. The lab targets on 127.0.0.1 are NOT
+        # special-cased here: they arrive through the scope sets like any other
+        # destination, which keeps the allow-list auditable in one place.
+        meta skuid valtros ip daddr 127.0.0.1 tcp dport 5432 accept
+        meta skuid valtros ip6 daddr ::1 tcp dport 5432 accept
+
+        # (3) Active, unexpired scopes (populated by sync_firewall.py).
+        meta skuid valtros ip daddr . tcp dport @allowed_v4_tcp accept
+        meta skuid valtros ip daddr . udp dport @allowed_v4_udp accept
+        meta skuid valtros ip6 daddr . tcp dport @allowed_v6_tcp accept
+        meta skuid valtros ip6 daddr . udp dport @allowed_v6_udp accept
+
+        # (4) Loopback the rules above did not allow is refused outright rather
+        # than blackholed. No packet here leaves the host, so an immediate
+        # refusal tells nobody anything they could not already read off the
+        # machine - whereas a silent drop makes the caller block until the
+        # kernel's connect timeout expires. That matters because the tools this
+        # uid runs probe loopback at startup to test their own capabilities:
+        # testssl.sh asks ``openssl s_client -tls1`` with no -connect, which
+        # defaults to localhost:4433. Blackholed, that probe consumes the entire
+        # run budget and the run is reported as a timeout instead of a result.
+        # A refusal keeps the deny while letting the tool get on with its work.
+        meta skuid valtros ip daddr 127.0.0.1 meta l4proto tcp counter reject with tcp reset
+        meta skuid valtros ip daddr 127.0.0.1 counter reject
+        meta skuid valtros ip6 daddr ::1 meta l4proto tcp counter reject with tcp reset
+        meta skuid valtros ip6 daddr ::1 counter reject
+
+        # (5) Default deny for this uid. `policy accept` above keeps every
+        # other uid untouched; `counter` makes drops visible in
+        # `nft list table inet valtros`. Destinations off this host keep
+        # the silent drop: a remote target learns nothing from a black hole.
+        meta skuid valtros counter drop
+    }
+}

@@ -1,0 +1,26 @@
+# Valtros lab target: lab-ssh - deliberately weak sshd configuration.
+# LAB TOY ONLY: root login permitted with password "toor".
+
+Port 22
+AddressFamily any
+ListenAddress 0.0.0.0
+
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_rsa_key
+
+# Deliberate weakness: root may log in directly.
+PermitRootLogin yes
+
+# Deliberate weakness: password authentication enabled (lab toy credential).
+# Empty-password authentication stays disabled.
+PasswordAuthentication yes
+PermitEmptyPasswords no
+
+KbdInteractiveAuthentication no
+
+AllowTcpForwarding no
+X11Forwarding no
+PrintMotd yes
+
+# NOTE: no UsePAM directive - Alpine's openssh is built without PAM, and
+# would reject the option as a bad configuration keyword.

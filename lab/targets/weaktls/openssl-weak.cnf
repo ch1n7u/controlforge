@@ -1,0 +1,18 @@
+# OpenSSL configuration for the lab-weaktls target.
+# Activates both the default and the legacy provider so that RC4-family
+# ciphers (moved out of the default provider in OpenSSL 3.x) can actually be
+# negotiated. Referenced from the Dockerfile via ENV OPENSSL_CONF.
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+
+[provider_sect]
+default = default_sect
+legacy = legacy_sect
+
+[default_sect]
+activate = 1
+
+[legacy_sect]
+activate = 1

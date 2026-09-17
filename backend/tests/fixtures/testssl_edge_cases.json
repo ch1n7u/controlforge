@@ -1,0 +1,5 @@
+[
+  {"id": "TLS1_3", "ip": "127.0.0.1", "port": "8443", "severity": "INFO", "finding": "check could not be completed, no answer from the service"},
+  {"id": "cipher-tls1_x01", "ip": "127.0.0.1", "port": "8443", "severity": "LOW", "finding": "garbled"},
+  {"id": "cert_expirationStatus", "ip": "127.0.0.1", "port": "8443", "severity": "HIGH", "finding": "expired on 2026-09-19 14:00 (0)"}
+]

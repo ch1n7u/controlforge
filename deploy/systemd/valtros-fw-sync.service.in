@@ -1,0 +1,28 @@
+[Unit]
+Description=Valtros firewall sync (worker egress allow-list from active scopes)
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+# VALTROS_CONF_DIR is what lets the script find valtros.env / fw.env when the
+# install did not use the default /etc/valtros. The interpreter is the
+# project's own venv rather than the system python3 because the script needs
+# psycopg, and whether the distribution packages a psycopg for its system
+# interpreter varies (Debian ships python3-psycopg only from bookworm on).
+Environment=VALTROS_CONF_DIR=@CONF_DIR@
+ExecStart=@PYTHON@ @REPO_DIR@/scripts/sync_firewall.py
+
+# Root unit, but narrowly so: the script reads @CONF_DIR@/valtros.env
+# read-only, queries PostgreSQL read-only and loads one nftables transaction.
+# nft needs CAP_NET_ADMIN + netlink, nothing else.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+CapabilityBoundingSet=CAP_NET_ADMIN
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,38 @@
+# Secrets and local environment.
+#
+# The real secret files are not in this tree: bootstrap_db.sh writes them to
+# /etc/valtros/valtros.env and /etc/valtros/fw.env (root:valtros, 0640/0600),
+# outside the repository. These patterns exist because config.py also accepts a
+# .env in the repository root for command-line runs, and because a developer
+# working on this will inevitably create one.
+.env
+*.env
+!*.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+backend/.venv/
+
+# Node, and the built UI.
+#
+# frontend/dist is a build artifact: nginx serves it, but provision.sh and
+# ./test.sh both regenerate it from source, so a clone does not need it.
+node_modules/
+frontend/dist/
+
+# Runtime output that must never be published: the audit trail is append-only
+# and evidence artifacts are content-addressed, and neither belongs in git.
+*.log
+audit.jsonl
+evidence/
+
+# Scratch and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.sqlite3

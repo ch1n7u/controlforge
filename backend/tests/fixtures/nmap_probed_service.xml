@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Derived from the real capture in nmap_connect_scan.xml: the same host and
+     ports, re-scanned with -sV so port 8081 is identified by probing
+     (method="probed", conf="10") while 8082 and 9999 keep a services-table
+     guess (method="table"). The values for 8081 match what the lab's nginx
+     reports in its Server banner. -->
+<nmaprun scanner="nmap" args="/usr/lib/nmap/nmap -sT -Pn -n -sV -oX - -p 8081,8082,9999 127.0.0.1" start="1789655264" startstr="Thu Sep 17 10:27:44 2026" version="7.99" xmloutputversion="1.05">
+<scaninfo type="connect" protocol="tcp" numservices="3" services="8081-8082,9999"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1789655264" endtime="1789655264"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="8081"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="http" product="nginx" version="1.31.6" method="probed" conf="10"><cpe>cpe:/a:igor_sysoev:nginx:1.31.6</cpe></service></port>
+<port protocol="tcp" portid="8082"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="blackice-alerts" method="table" conf="3"/></port>
+<port protocol="tcp" portid="9999"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="abyss" method="table" conf="3"/></port>
+</ports>
+<times srtt="123" rttvar="2860" to="100000"/>
+</host>
+<runstats><finished time="1789655264" timestr="Thu Sep 17 10:27:44 2026" summary="Nmap done at Thu Sep 17 10:27:44 2026; 1 IP address (1 host up) scanned in 0.02 seconds" elapsed="0.02" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>
