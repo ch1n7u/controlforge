@@ -195,11 +195,18 @@ Every engine shipped in 0.1.0 is read-only: no run changes state on a target.
 
 ## Accounts and secrets
 
-Accounts are created by an administrator; there is no self-service signup. The
-first administrator is created during `./install.sh` with a generated password
-stored as `VALTROS_ADMIN_INITIAL_PASSWORD` in
-`/etc/valtros/valtros.env`, and is required to change it at first
-sign-in. Roles are `admin`, `analyst` and `viewer`.
+One administrator account is created when the platform is first set up, with a
+generated password stored as `VALTROS_ADMIN_INITIAL_PASSWORD` in
+`/etc/valtros/valtros.env`, and it is required to change that password at first
+sign-in.
+
+There is no self-service signup, and **0.1.0 has no user-management API or
+screen**, so no further accounts can be created through the product yet. An
+account row carries a role of `admin`, `analyst` or `viewer`, and the
+administrator-only routes are enforced, but the analyst/viewer distinction is
+not yet applied per route. Adding accounts today means inserting a row directly
+with a `hashlib.scrypt` hash matching `backend/app/core/security.py`; first-class
+user management is the first item under next priorities.
 
 Secrets live in `/etc/valtros/valtros.env` (`0640
 root:valtros`): the database URL, the session signing key, the evidence
@@ -292,6 +299,10 @@ creates).
   TCP connect scans. No SYN scanning, no masscan, no packet crafting.
 - **Session authentication only.** There are no API tokens yet, so automation
   must drive the API with a session cookie.
+- **No user management.** 0.1.0 ships a single administrator account. There is no
+  way to create or edit accounts through the product, and while accounts carry
+  an `admin`/`analyst`/`viewer` role, only the administrator-only routes are
+  enforced — the analyst/viewer distinction is modelled but not yet applied.
 - **Single node.** No high availability, no clustering, no distributed workers.
 - **Tool data is local.** Nuclei needs its local templates, and testssl.sh its
   local data bundle; neither auto-updates, which is deliberate for reproducibility
@@ -316,12 +327,15 @@ creates).
 
 ## Next priorities
 
-1. API tokens for automation, so scheduled revalidation does not depend on a
+1. User management: creating, editing and deactivating accounts, and applying
+   the `analyst`/`viewer` distinction per route. This is the largest functional
+   gap in 0.1.0 — the product currently has exactly one account.
+2. API tokens for automation, so scheduled revalidation does not depend on a
    browser session.
-2. A configuration-baseline engine (file checksums and modes) built on the same
+3. A configuration-baseline engine (file checksums and modes) built on the same
    facts-and-assertions model.
-3. More engines underneath the same model: OWASP ZAP, Trivy, Semgrep.
-4. Scheduled and continuous revalidation with drift detection.
-5. SLA and due-date tracking on findings, building on the remediation workflow.
-6. Compliance report export (PDF/CSV) from the posture data.
-7. An optional AI reporting plugin — explicitly outside the critical path.
+4. More engines underneath the same model: OWASP ZAP, Trivy, Semgrep.
+5. Scheduled and continuous revalidation with drift detection.
+6. SLA and due-date tracking on findings, building on the remediation workflow.
+7. Compliance report export (PDF/CSV) from the posture data.
+8. An optional AI reporting plugin — explicitly outside the critical path.
