@@ -10,6 +10,7 @@ import { EvidencePage } from './pages/EvidencePage'
 import { FindingDetailPage } from './pages/FindingDetailPage'
 import { FindingsPage } from './pages/FindingsPage'
 import { LoginPage } from './pages/LoginPage'
+import { NewScopePage } from './pages/NewScopePage'
 import { NewTargetPage } from './pages/NewTargetPage'
 import { NewTestPage } from './pages/NewTestPage'
 import { RunDetailPage } from './pages/RunDetailPage'
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="targets/new" element={<NewTargetPage />} />
             <Route path="targets/:id" element={<TargetDetailPage />} />
             <Route path="scopes" element={<ScopesPage />} />
+            <Route path="scopes/new" element={<NewScopePage />} />
             <Route path="scopes/:id" element={<ScopeDetailPage />} />
             <Route path="tests" element={<TestsPage />} />
             <Route path="tests/new" element={<NewTestPage />} />

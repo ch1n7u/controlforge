@@ -150,6 +150,24 @@ export interface Scope {
   entries: ScopeEntry[]
 }
 
+export interface ScopeEntryCreate {
+  kind: ScopeEntryKind
+  value: string
+  ports: string
+  protocol: string
+  note?: string
+}
+
+export interface ScopeCreate {
+  name: string
+  description?: string
+  authorization_ref?: string
+  allow_broad?: boolean
+  is_lab?: boolean
+  expires_at?: string
+  entries: ScopeEntryCreate[]
+}
+
 // -------------------------------------------------------------- engines ----
 
 /** Minimal structural view of a JSON Schema, enough to render a form. */

@@ -28,6 +28,9 @@ import type {
   RunDetail,
   RunSummary,
   Scope,
+  ScopeCreate,
+  ScopeEntry,
+  ScopeEntryCreate,
   Setting,
   Target,
   TargetCreate,
@@ -318,6 +321,11 @@ export const api = {
     del<void>(`/targets/${targetId}/scopes/${scopeId}`),
   scopes: (query?: { active?: boolean }) => get<Scope[]>('/scopes', query),
   scope: (id: number) => get<Scope>(`/scopes/${id}`),
+  createScope: (payload: ScopeCreate) => post<Scope>('/scopes', payload),
+  addScopeEntry: (scopeId: number, payload: ScopeEntryCreate) =>
+    post<ScopeEntry>(`/scopes/${scopeId}/entries`, payload),
+  removeScopeEntry: (scopeId: number, entryId: number) =>
+    del<void>(`/scopes/${scopeId}/entries/${entryId}`),
 
   // -- tests --------------------------------------------------------------
   tests: (query?: {

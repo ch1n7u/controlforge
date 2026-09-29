@@ -6,6 +6,7 @@ import {
   Checkbox,
   ErrorNotice,
   Input,
+  LinkButton,
   Loading,
   PageHeader,
   TableEmptyRow,
@@ -14,11 +15,13 @@ import {
   Th,
   Toolbar,
 } from '../components/ui'
+import { useAuth } from '../auth/context'
 import { api, qk } from '../lib/api'
 import { daysUntil, fmtDate, fmtRelative } from '../lib/format'
 import { expiryState, governanceProblems } from '../lib/scopeGovernance'
 
 export function ScopesPage() {
+  const { isAdmin } = useAuth()
   const [onlyProblems, setOnlyProblems] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -58,6 +61,13 @@ export function ScopesPage() {
       <PageHeader
         title="Scopes"
         subtitle="Written authorization for the systems you may validate. A run connects only to an address, port and protocol an active scope permits."
+        actions={
+          isAdmin ? (
+            <LinkButton to="/scopes/new" variant="primary">
+              New scope
+            </LinkButton>
+          ) : null
+        }
       />
 
       <Toolbar

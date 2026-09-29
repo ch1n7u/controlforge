@@ -1,20 +1,27 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Badge,
+  Button,
   ErrorNotice,
+  Field,
+  Input,
   KeyValue,
   Loading,
   PageHeader,
   Panel,
+  Select,
   TableEmptyRow,
   TableWrap,
   Td,
   Th,
 } from '../components/ui'
+import { useAuth } from '../auth/context'
 import { api, qk } from '../lib/api'
 import { daysUntil, fmtDateTime, fmtRelative } from '../lib/format'
 import { expiryState, governanceProblems } from '../lib/scopeGovernance'
+import type { ScopeEntry, ScopeEntryCreate, ScopeEntryKind } from '../lib/types'
 
 export function ScopeDetailPage() {
   const params = useParams()
@@ -31,6 +38,59 @@ export function ScopeDetailPage() {
     staleTime: 5 * 60_000,
   })
   const userById = new Map((users.data ?? []).map((user) => [user.id, user]))
+
+  const { isAdmin } = useAuth()
+  const queryClient = useQueryClient()
+
+  const [entryKind, setEntryKind] = useState<ScopeEntryKind>('cidr')
+  const [entryValue, setEntryValue] = useState('')
+  const [entryPorts, setEntryPorts] = useState('')
+  const [entryProtocol, setEntryProtocol] = useState('tcp')
+  const [entryNote, setEntryNote] = useState('')
+  const [entryError, setEntryError] = useState<string | null>(null)
+
+  const addEntry = useMutation({
+    mutationFn: (payload: ScopeEntryCreate) => api.addScopeEntry(scopeId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.scope(scopeId) })
+      void queryClient.invalidateQueries({ queryKey: qk.scopes() })
+      setEntryValue('')
+      setEntryPorts('')
+      setEntryNote('')
+      setEntryError(null)
+    },
+  })
+
+  const removeEntry = useMutation({
+    mutationFn: (entryId: number) => api.removeScopeEntry(scopeId, entryId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.scope(scopeId) })
+      void queryClient.invalidateQueries({ queryKey: qk.scopes() })
+    },
+  })
+
+  function submitEntry(): void {
+    const value = entryValue.trim()
+    const ports = entryPorts.trim()
+    if (value === '' || ports === '') {
+      setEntryError('A value and at least one port are both required.')
+      return
+    }
+    const payload: ScopeEntryCreate = { kind: entryKind, value, ports, protocol: entryProtocol }
+    const note = entryNote.trim()
+    if (note !== '') payload.note = note
+    addEntry.mutate(payload)
+  }
+
+  function confirmRemove(entry: ScopeEntry): void {
+    if (
+      window.confirm(
+        `Remove entry ${entry.value} (${entry.ports}/${entry.protocol})? Queued and running runs this scope authorizes are cancelled.`,
+      )
+    ) {
+      removeEntry.mutate(entry.id)
+    }
+  }
 
   if (scope.isPending) return <Loading label="Loading scope" />
   if (scope.isError) return <ErrorNotice error={scope.error} onRetry={() => void scope.refetch()} />
@@ -143,11 +203,12 @@ export function ScopeDetailPage() {
               <Th>Ports</Th>
               <Th>Protocol</Th>
               <Th>Note</Th>
+              {isAdmin && <Th align="right">Manage</Th>}
             </tr>
           </thead>
           <tbody>
             {s.entries.length === 0 ? (
-              <TableEmptyRow colSpan={5}>
+              <TableEmptyRow colSpan={isAdmin ? 6 : 5}>
                 This scope has no entries, so no address is authorized through it.
               </TableEmptyRow>
             ) : (
@@ -166,12 +227,99 @@ export function ScopeDetailPage() {
                   <Td wrap className="min-w-[10rem] max-w-[28rem] text-mute">
                     {entry.note ?? '-'}
                   </Td>
+                  {isAdmin && (
+                    <Td align="right">
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={removeEntry.isPending}
+                        onClick={() => confirmRemove(entry)}
+                      >
+                        Remove
+                      </Button>
+                    </Td>
+                  )}
                 </tr>
               ))
             )}
           </tbody>
         </TableWrap>
+        {removeEntry.isError && (
+          <div className="p-3">
+            <ErrorNotice title="Remove entry failed" error={removeEntry.error} />
+          </div>
+        )}
       </Panel>
+
+      {isAdmin && (
+        <Panel title="Add an entry">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Kind">
+              <Select
+                value={entryKind}
+                onChange={(e) => setEntryKind(e.target.value as ScopeEntryKind)}
+              >
+                <option value="cidr">cidr</option>
+                <option value="host">host</option>
+              </Select>
+            </Field>
+            <Field
+              label="Value"
+              required
+              hint={entryKind === 'cidr' ? 'An address range, e.g. 10.0.0.0/24.' : 'An IP address or hostname.'}
+            >
+              <Input
+                value={entryValue}
+                onChange={(e) => setEntryValue(e.target.value)}
+                placeholder={entryKind === 'cidr' ? '10.0.0.0/24' : 'app.internal.example'}
+                maxLength={255}
+              />
+            </Field>
+            <Field label="Ports" required hint="Explicit ports or ranges, e.g. 443 or 8000-8100,80.">
+              <Input
+                value={entryPorts}
+                onChange={(e) => setEntryPorts(e.target.value)}
+                placeholder="443"
+                maxLength={255}
+              />
+            </Field>
+            <Field label="Protocol">
+              <Select value={entryProtocol} onChange={(e) => setEntryProtocol(e.target.value)}>
+                <option value="tcp">tcp</option>
+                <option value="udp">udp</option>
+              </Select>
+            </Field>
+          </div>
+          <div className="mt-3">
+            <Field label="Note" hint="Why this address is authorized; kept with the audit record.">
+              <Input
+                value={entryNote}
+                onChange={(e) => setEntryNote(e.target.value)}
+                maxLength={255}
+              />
+            </Field>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[12px] text-dim">
+              Entries are policy-checked: loopback and other internal ranges need a lab scope, public
+              ranges need an authorization reference, and broad ranges need "broad ranges allowed".
+            </span>
+            <Button variant="primary" disabled={addEntry.isPending} onClick={submitEntry}>
+              {addEntry.isPending ? 'Adding...' : 'Add entry'}
+            </Button>
+          </div>
+          {entryError !== null && (
+            <div className="mt-3">
+              <ErrorNotice error={new Error(entryError)} />
+            </div>
+          )}
+          {addEntry.isError && (
+            <div className="mt-3">
+              <ErrorNotice title="Add entry failed" error={addEntry.error} />
+            </div>
+          )}
+        </Panel>
+      )}
     </div>
   )
 }

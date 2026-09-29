@@ -220,8 +220,8 @@ export function NewTargetPage() {
             <ErrorNotice error={scopes.error} onRetry={() => void scopes.refetch()} />
           ) : scopeOptions.length === 0 ? (
             <p className="text-[12px] text-dim">
-              No scopes exist yet. A scope defines what a run is allowed to reach; create one
-              before this target can be validated. In 0.1.0 scopes are created through the API.
+              No scopes exist yet. A scope defines what a run is allowed to reach; create one from
+              the Scopes page before this target can be validated.
             </p>
           ) : (
             <div className="space-y-3">

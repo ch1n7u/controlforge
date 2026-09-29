@@ -237,7 +237,7 @@ export function TargetDetailPage() {
                   ) : attachableScopes.length === 0 ? (
                     <p className="text-[12px] text-dim">
                       {catalog.length === 0
-                        ? 'No scopes exist yet. A scope defines what a run is allowed to reach; in 0.1.0 scopes are created through the API.'
+                        ? 'No scopes exist yet. A scope defines what a run is allowed to reach; create one from the Scopes page.'
                         : 'Every scope is already attached to this target.'}
                     </p>
                   ) : (

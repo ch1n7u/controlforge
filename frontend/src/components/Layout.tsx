@@ -58,6 +58,7 @@ const TITLE_ROUTES: Array<[RegExp, string]> = [
   [/^\/targets\/new/, 'New target'],
   [/^\/targets\/[^/]+/, 'Target'],
   [/^\/targets/, 'Targets'],
+  [/^\/scopes\/new/, 'New scope'],
   [/^\/scopes\/[^/]+/, 'Scope'],
   [/^\/scopes/, 'Scopes'],
   [/^\/audit/, 'Audit log'],
