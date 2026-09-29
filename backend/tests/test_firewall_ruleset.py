@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-RULESET = REPO_ROOT / "deploy" / "nftables" / "valtros.nft"
+RULESET = REPO_ROOT / "deploy" / "nftables" / "controlforge.nft"
 SYNC_SCRIPT = REPO_ROOT / "scripts" / "sync_firewall.py"
 
 
@@ -58,7 +58,7 @@ def _addr(text: str) -> int:
 
 def test_the_uid_is_denied_by_default(rules):
     """Every rule before the drop is an exception; the drop is the policy."""
-    assert rules[-1] == "meta skuid valtros counter drop"
+    assert rules[-1] == "meta skuid controlforge counter drop"
 
 
 def test_only_the_worker_uid_is_filtered(ruleset_text):
@@ -66,7 +66,7 @@ def test_only_the_worker_uid_is_filtered(ruleset_text):
     assert "type filter hook output priority filter; policy accept;" in ruleset_text
     for line in ruleset_text.splitlines():
         if "skuid" in line:
-            assert "valtros" in line, line
+            assert "controlforge" in line, line
 
 
 def test_unpermitted_loopback_is_refused_not_blackholed(ruleset_text, rules):

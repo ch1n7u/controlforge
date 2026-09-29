@@ -140,8 +140,8 @@ def test_output_is_capped_and_the_process_still_finishes():
 
 def test_the_worker_environment_is_not_inherited(monkeypatch):
     """Tools must not be able to read the worker's secrets from their env."""
-    monkeypatch.setenv("VALTROS_SECRET_KEY", "super-secret-value")
-    monkeypatch.setenv("VALTROS_DB_URL", "postgresql://user:pw@host/db")
+    monkeypatch.setenv("CONTROLFORGE_SECRET_KEY", "super-secret-value")
+    monkeypatch.setenv("CONTROLFORGE_DB_URL", "postgresql://user:pw@host/db")
 
     result = run_command(
         [sys.executable, "-c", "import os; print(sorted(os.environ))"],
@@ -149,8 +149,8 @@ def test_the_worker_environment_is_not_inherited(monkeypatch):
         max_output_bytes=8192,
     )
     assert result.ok
-    assert "VALTROS_SECRET_KEY" not in result.stdout
-    assert "VALTROS_DB_URL" not in result.stdout
+    assert "CONTROLFORGE_SECRET_KEY" not in result.stdout
+    assert "CONTROLFORGE_DB_URL" not in result.stdout
     # and the values themselves never appear
     assert "super-secret-value" not in result.stdout
 

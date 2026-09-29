@@ -360,7 +360,7 @@ def upgrade() -> None:
     )
 
     # Read-only surface used by the root-owned firewall sync service. It runs as
-    # a separate, unprivileged database role (valtros_fw) that can see the
+    # a separate, unprivileged database role (controlforge_fw) that can see the
     # scope allowlist and nothing else, so no application input ever reaches a
     # root context.
     op.execute("""

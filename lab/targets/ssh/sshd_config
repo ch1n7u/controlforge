@@ -1,4 +1,4 @@
-# Valtros lab target: lab-ssh - deliberately weak sshd configuration.
+# CONTROLFORGE lab target: lab-ssh - deliberately weak sshd configuration.
 # LAB TOY ONLY: root login permitted with password "toor".
 
 Port 22

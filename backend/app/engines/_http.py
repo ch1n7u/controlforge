@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 
 from app.engines.context import EngineError, TargetView
 
-USER_AGENT = "Valtros/0.1 (+local control validation)"
+USER_AGENT = "CONTROLFORGE/0.1 (+local control validation)"
 CONNECT_TIMEOUT_SECONDS = 10.0
 
 

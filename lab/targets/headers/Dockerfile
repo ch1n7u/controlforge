@@ -1,4 +1,4 @@
-# Valtros lab target: lab-headers
+# CONTROLFORGE lab target: lab-headers
 FROM nginx:alpine
 
 # Replace the stock vhost with the deliberately insecure one.

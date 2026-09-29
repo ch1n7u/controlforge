@@ -1,4 +1,4 @@
-# Valtros self-validation lab.
+# CONTROLFORGE self-validation lab.
 #
 # Every published port is bound to 127.0.0.1 ONLY - nothing in this lab is
 # reachable from outside this host. Each core service has a healthcheck so
@@ -7,20 +7,20 @@
 # Core lab:   docker compose -f docker-compose.yml up -d --wait
 # + Juice Shop (optional profile):
 #             docker compose -f docker-compose.yml --profile juice up -d --wait
-name: valtros-lab
+name: controlforge-lab
 
 networks:
-  valtros-lab:
-    name: valtros-lab
+  controlforge-lab:
+    name: controlforge-lab
     driver: bridge
 
 services:
   lab-headers:
     build: ./targets/headers
-    image: valtros-lab/lab-headers:latest
-    container_name: valtros-lab-headers
+    image: controlforge-lab/lab-headers:latest
+    container_name: controlforge-lab-headers
     networks:
-      - valtros-lab
+      - controlforge-lab
     ports:
       - "127.0.0.1:8081:80"
     healthcheck:
@@ -33,10 +33,10 @@ services:
 
   lab-weaktls:
     build: ./targets/weaktls
-    image: valtros-lab/lab-weaktls:latest
-    container_name: valtros-lab-weaktls
+    image: controlforge-lab/lab-weaktls:latest
+    container_name: controlforge-lab-weaktls
     networks:
-      - valtros-lab
+      - controlforge-lab
     ports:
       - "127.0.0.1:8443:443"
     healthcheck:
@@ -51,10 +51,10 @@ services:
 
   lab-webapp:
     build: ./targets/webapp
-    image: valtros-lab/lab-webapp:latest
-    container_name: valtros-lab-webapp
+    image: controlforge-lab/lab-webapp:latest
+    container_name: controlforge-lab-webapp
     networks:
-      - valtros-lab
+      - controlforge-lab
     ports:
       - "127.0.0.1:8082:8000"
     healthcheck:
@@ -67,10 +67,10 @@ services:
 
   lab-api:
     build: ./targets/api
-    image: valtros-lab/lab-api:latest
-    container_name: valtros-lab-api
+    image: controlforge-lab/lab-api:latest
+    container_name: controlforge-lab-api
     networks:
-      - valtros-lab
+      - controlforge-lab
     ports:
       - "127.0.0.1:8083:8000"
     healthcheck:
@@ -83,10 +83,10 @@ services:
 
   lab-ssh:
     build: ./targets/ssh
-    image: valtros-lab/lab-ssh:latest
-    container_name: valtros-lab-ssh
+    image: controlforge-lab/lab-ssh:latest
+    container_name: controlforge-lab-ssh
     networks:
-      - valtros-lab
+      - controlforge-lab
     ports:
       - "127.0.0.1:2222:22"
     healthcheck:
@@ -102,9 +102,9 @@ services:
   # starts without it. Start with: --profile juice
   juice-shop:
     image: bkimminich/juice-shop
-    container_name: valtros-lab-juice-shop
+    container_name: controlforge-lab-juice-shop
     networks:
-      - valtros-lab
+      - controlforge-lab
     profiles: ["juice"]
     ports:
       - "127.0.0.1:8084:3000"

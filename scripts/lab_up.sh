@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Bring up the Valtros test lab (Docker Compose, 6 containers pinned to
+# Bring up the CONTROLFORGE test lab (Docker Compose, 6 containers pinned to
 # 127.0.0.1). Waits until every healthcheck passes. Idempotent.
 #
 # The compose file is owned by the lab workstream; this wrapper never modifies
@@ -16,8 +16,8 @@ COMPOSE_FILE="$REPO_ROOT/lab/docker-compose.yml"
 
 # shellcheck source=scripts/lib.sh
 source "$REPO_ROOT/scripts/lib.sh"
-VALTROS_LOG_TAG="lab_up"
-valtros_load_install_conf
+CONTROLFORGE_LOG_TAG="lab_up"
+controlforge_load_install_conf
 
 die() { printf 'lab_up: ERROR: %s\n' "$*" >&2; exit 1; }
 say() { printf 'lab_up: %s\n' "$*"; }

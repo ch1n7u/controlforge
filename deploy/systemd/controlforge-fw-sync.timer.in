@@ -1,5 +1,5 @@
 [Unit]
-Description=Valtros firewall convergence (re-derive the worker egress allow-list)
+Description=CONTROLFORGE firewall convergence (re-derive the worker egress allow-list)
 Documentation=file:@REPO_DIR@/scripts/sync_firewall.py
 
 # The ruleset is a function of the active scopes in the database, so it is
@@ -13,7 +13,7 @@ Documentation=file:@REPO_DIR@/scripts/sync_firewall.py
 # and a ruleset emptied by hand or by a reboot heals without intervention.
 #
 # An operator who needs the ruleset updated *now* can run:
-#     sudo systemctl start valtros-fw-sync.service
+#     sudo systemctl start controlforge-fw-sync.service
 
 [Timer]
 OnBootSec=30s

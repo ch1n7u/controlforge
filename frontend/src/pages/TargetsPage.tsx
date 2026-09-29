@@ -7,6 +7,7 @@ import {
   Button,
   ErrorNotice,
   Input,
+  LinkButton,
   Loading,
   PageHeader,
   Select,
@@ -54,6 +55,13 @@ export function TargetsPage() {
       <PageHeader
         title="Targets"
         subtitle="Hosts, web apps and services under validation. A target can only be run while an active scope authorizes its address and port."
+        actions={
+          isWriter ? (
+            <LinkButton to="/targets/new" variant="primary">
+              New target
+            </LinkButton>
+          ) : null
+        }
       />
 
       <Toolbar
@@ -115,7 +123,9 @@ export function TargetsPage() {
             {visible.length === 0 ? (
               <TableEmptyRow colSpan={8}>
                 {targets.data.length === 0
-                  ? 'No targets have been registered yet. A target is registered by an analyst or administrator, and can be validated only while a scope authorizes it.'
+                  ? isWriter
+                    ? 'No targets have been registered yet. Use New target to register a host, then attach a scope so it can be validated.'
+                    : 'No targets have been registered yet. A target is registered by an analyst or administrator, and can be validated only while a scope authorizes it.'
                   : 'No target matches the current filters.'}
               </TableEmptyRow>
             ) : (

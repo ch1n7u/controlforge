@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 #
-# Bring Valtros up: PostgreSQL, the API, the worker, a firewall refresh and
+# Bring CONTROLFORGE up: PostgreSQL, the API, the worker, a firewall refresh and
 # nginx. Safe to run repeatedly - already-running pieces are left alone.
 set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-VALTROS_REPO_DIR="$REPO_ROOT"
-export VALTROS_REPO_DIR
+CONTROLFORGE_REPO_DIR="$REPO_ROOT"
+export CONTROLFORGE_REPO_DIR
 
 # shellcheck source=scripts/lib.sh
 source "$REPO_ROOT/scripts/lib.sh"
 
-VALTROS_LOG_TAG="start"
-valtros_load_install_conf
+CONTROLFORGE_LOG_TAG="start"
+controlforge_load_install_conf
 
 [[ ${EUID} -eq 0 ]] || exec sudo -- "$0" "$@"
 
-valtros_require_systemd
+controlforge_require_systemd
 
 # --- 1. PostgreSQL -----------------------------------------------------------
-if valtros_pg_start; then
+if controlforge_pg_start; then
     say "PostgreSQL is up on ${DB_HOST}:${DB_PORT}"
 else
     die "PostgreSQL did not become ready on ${DB_HOST}:${DB_PORT}
@@ -72,7 +72,7 @@ systemctl is-active --quiet "$API_UNIT" && api_unit=1
 # --- URLs --------------------------------------------------------------------
 LAN_IP="$(detect_lan_ip || true)"
 echo
-echo "Valtros is starting:"
+echo "CONTROLFORGE is starting:"
 if [[ "$EXPOSE_LAN" == "yes" && -n "$LAN_IP" ]]; then
     echo "  UI    http://127.0.0.1/            (this machine)"
     echo "  UI    http://${LAN_IP}/  (LAN)"

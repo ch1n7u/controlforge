@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Refresh the Valtros worker egress allow-list.
+"""Refresh the CONTROLFORGE worker egress allow-list.
 
-Run as root: by the oneshot unit ``valtros-fw-sync.service``, by the
+Run as root: by the oneshot unit ``controlforge-fw-sync.service``, by the
 service account through the sudoers drop-in, or by hand.
 
 What it does, in order:
 
-1. Reads the base ruleset ``deploy/nftables/valtros.nft`` (static rules +
+1. Reads the base ruleset ``deploy/nftables/controlforge.nft`` (static rules +
    four empty interval sets).
 2. Queries PostgreSQL **read-only** for every entry of every scope that is
    ``active`` and not expired. Preferred connection: the dedicated
-   ``VALTROS_FW_DB_URL`` role from ``/etc/valtros/fw.env``, which can
+   ``CONTROLFORGE_FW_DB_URL`` role from ``/etc/controlforge/fw.env``, which can
    only SELECT the ``v_scope_firewall_rules`` view. If that role or view has
    not been provisioned yet, it falls back to the application
-   ``VALTROS_DB_URL`` from ``/etc/valtros/valtros.env`` and the
+   ``CONTROLFORGE_DB_URL`` from ``/etc/controlforge/controlforge.env`` and the
    base tables. Either way the URL (and therefore the password) is parsed
    in-process, handed to libpq via the environment, never logged, printed or
    written anywhere, and the transaction is opened with ``BEGIN READ ONLY``.
@@ -46,20 +46,20 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-LOG = logging.getLogger("valtros.fw-sync")
+LOG = logging.getLogger("controlforge.fw-sync")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-BASE_RULESET = REPO_ROOT / "deploy" / "nftables" / "valtros.nft"
-# The install directory is not always /etc/valtros, so the unit passes it in.
-ENV_DIR = Path(os.environ.get("VALTROS_CONF_DIR", "/etc/valtros"))
-ENV_FILE = ENV_DIR / "valtros.env"
+BASE_RULESET = REPO_ROOT / "deploy" / "nftables" / "controlforge.nft"
+# The install directory is not always /etc/controlforge, so the unit passes it in.
+ENV_DIR = Path(os.environ.get("CONTROLFORGE_CONF_DIR", "/etc/controlforge"))
+ENV_FILE = ENV_DIR / "controlforge.env"
 FW_ENV_FILE = ENV_DIR / "fw.env"
 
 NFT = "/usr/sbin/nft"
 PSQL = "/usr/bin/psql"
 
 TABLE_FAMILY = "inet"
-TABLE_NAME = "valtros"
+TABLE_NAME = "controlforge"
 
 #: (address family, protocol) -> set name in the base ruleset.
 SETS: dict[tuple[str, str], str] = {
@@ -135,10 +135,10 @@ def libpq_environment(raw_url: str) -> dict[str, str]:
         {
             "PGHOST": parsed.hostname or "127.0.0.1",
             "PGPORT": str(parsed.port or 5432),
-            "PGDATABASE": (parsed.path or "/valtros").lstrip("/") or "valtros",
-            "PGUSER": unquote(parsed.username or "valtros"),
+            "PGDATABASE": (parsed.path or "/controlforge").lstrip("/") or "controlforge",
+            "PGUSER": unquote(parsed.username or "controlforge"),
             "PGCONNECT_TIMEOUT": "5",
-            "PGAPPNAME": "valtros-fw-sync",
+            "PGAPPNAME": "controlforge-fw-sync",
         }
     )
     if parsed.password:
@@ -185,7 +185,7 @@ def query_scope_entries() -> list[tuple[str, str, str, str]]:
     Prefers the read-only firewall role + view; falls back to the application
     role + base tables only while the fw role is not provisioned yet.
     """
-    fw_url = read_env_value(FW_ENV_FILE, "VALTROS_FW_DB_URL")
+    fw_url = read_env_value(FW_ENV_FILE, "CONTROLFORGE_FW_DB_URL")
     if fw_url:
         try:
             return psql_rows(libpq_environment(fw_url), VIEW_SQL)
@@ -197,9 +197,9 @@ def query_scope_entries() -> list[tuple[str, str, str, str]]:
                 "application role for this run (%s)",
                 exc,
             )
-    app_url = read_env_value(ENV_FILE, "VALTROS_DB_URL")
+    app_url = read_env_value(ENV_FILE, "CONTROLFORGE_DB_URL")
     if not app_url:
-        raise SyncError(f"VALTROS_DB_URL not found in {ENV_FILE}")
+        raise SyncError(f"CONTROLFORGE_DB_URL not found in {ENV_FILE}")
     return psql_rows(libpq_environment(app_url), SCOPES_SQL)
 
 
@@ -434,7 +434,7 @@ def flush() -> None:
     if proc.returncode != 0:
         raise SyncError(f"could not delete the table: {proc.stderr.strip()[:400]}")
     LOG.warning(
-        "table %s %s deleted - the valtros uid now has UNFILTERED egress",
+        "table %s %s deleted - the controlforge uid now has UNFILTERED egress",
         TABLE_FAMILY, TABLE_NAME,
     )
 
@@ -445,7 +445,7 @@ def flush() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="sync_firewall.py",
-        description="Regenerate the Valtros worker egress allow-list from active scopes.",
+        description="Regenerate the CONTROLFORGE worker egress allow-list from active scopes.",
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(

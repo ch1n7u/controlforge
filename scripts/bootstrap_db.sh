@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Valtros - database + secret bootstrap (idempotent)
+# CONTROLFORGE - database + secret bootstrap (idempotent)
 #
 # Creates the local PostgreSQL roles/database and generates the secret files.
 # Safe to re-run: existing secrets are reused, roles are reconciled to match.
@@ -13,33 +13,33 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-VALTROS_REPO_DIR="$REPO_ROOT"
-export VALTROS_REPO_DIR
+CONTROLFORGE_REPO_DIR="$REPO_ROOT"
+export CONTROLFORGE_REPO_DIR
 
 # shellcheck source=scripts/lib.sh
 source "$REPO_ROOT/scripts/lib.sh"
 
-VALTROS_LOG_TAG="bootstrap_db"
-valtros_load_install_conf
+CONTROLFORGE_LOG_TAG="bootstrap_db"
+controlforge_load_install_conf
 
 if [[ ${EUID} -ne 0 ]]; then
   exec sudo -- "$0" "$@"
 fi
 
 ENV_DIR="$CONF_DIR"
-ENV_FILE="${ENV_DIR}/valtros.env"
+ENV_FILE="${ENV_DIR}/controlforge.env"
 FW_ENV_FILE="${ENV_DIR}/fw.env"
 TEST_DB_NAME="${DB_TEST_NAME:-${DB_NAME}_test}"
 
 log()  { printf '  %s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-valtros_has openssl || fail "openssl is required to generate secrets and is not installed"
-valtros_has psql    || fail "psql is not installed (install the PostgreSQL client package)"
+controlforge_has openssl || fail "openssl is required to generate secrets and is not installed"
+controlforge_has psql    || fail "psql is not installed (install the PostgreSQL client package)"
 
 gen_secret() { openssl rand -base64 48 | tr -d '/+=' | head -c 44; }
 
-psql_super() { valtros_psql -v ON_ERROR_STOP=1 -q "$@"; }
+psql_super() { controlforge_psql -v ON_ERROR_STOP=1 -q "$@"; }
 
 # ---------------------------------------------------------------- secrets ----
 generate_secrets() {
@@ -59,25 +59,25 @@ generate_secrets() {
 
   umask 077
   {
-    printf '# Valtros secrets - generated %s\n' "$(date -Is)"
+    printf '# CONTROLFORGE secrets - generated %s\n' "$(date -Is)"
     printf '# Keep this file out of version control, logs, screenshots and reports.\n'
-    printf 'VALTROS_ENV=production\n'
-    printf 'VALTROS_DB_URL=postgresql+psycopg://%s:%s@%s:%s/%s\n' "${DB_USER}" "${db_pw}" "${DB_HOST}" "${DB_PORT}" "${DB_NAME}"
-    printf 'VALTROS_SECRET_KEY=%s\n' "${secret_key}"
-    printf 'VALTROS_EVIDENCE_DIR=%s/evidence\n' "${STATE_DIR}"
-    printf 'VALTROS_ADMIN_INITIAL_PASSWORD=%s\n' "${admin_pw}"
+    printf 'CONTROLFORGE_ENV=production\n'
+    printf 'CONTROLFORGE_DB_URL=postgresql+psycopg://%s:%s@%s:%s/%s\n' "${DB_USER}" "${db_pw}" "${DB_HOST}" "${DB_PORT}" "${DB_NAME}"
+    printf 'CONTROLFORGE_SECRET_KEY=%s\n' "${secret_key}"
+    printf 'CONTROLFORGE_EVIDENCE_DIR=%s/evidence\n' "${STATE_DIR}"
+    printf 'CONTROLFORGE_ADMIN_INITIAL_PASSWORD=%s\n' "${admin_pw}"
     # The account the seeder creates, and whether it also seeds the lab catalog.
     # Both are install-time choices rather than secrets, but they live here
     # because this is the file the seeder already reads.
-    printf 'VALTROS_SEED_ADMIN_USERNAME=%s\n' "${ADMIN_USERNAME}"
+    printf 'CONTROLFORGE_SEED_ADMIN_USERNAME=%s\n' "${ADMIN_USERNAME}"
     if [[ "${SEED_CATALOG:-yes}" == "yes" ]]; then
-      printf 'VALTROS_AUTOSEED=true\n'
+      printf 'CONTROLFORGE_AUTOSEED=true\n'
     else
-      printf 'VALTROS_AUTOSEED=false\n'
+      printf 'CONTROLFORGE_AUTOSEED=false\n'
     fi
   } > "${ENV_FILE}"
 
-  printf 'VALTROS_FW_DB_URL=postgresql://%s:%s@%s:%s/%s\n' \
+  printf 'CONTROLFORGE_FW_DB_URL=postgresql://%s:%s@%s:%s/%s\n' \
     "${FW_DB_USER}" "${fw_pw}" "${DB_HOST}" "${DB_PORT}" "${DB_NAME}" > "${FW_ENV_FILE}"
 
   chown "root:${SERVICE_GROUP}" "${ENV_FILE}"; chmod 0640 "${ENV_FILE}"
@@ -96,15 +96,15 @@ generate_secrets() {
 # back out, so nothing here can print a password.
 reconcile_env_options() {
   local tmp
-  tmp="$(mktemp "${ENV_DIR}/.valtros.env.XXXXXX")"
+  tmp="$(mktemp "${ENV_DIR}/.controlforge.env.XXXXXX")"
   awk -v user="${ADMIN_USERNAME}" -v seed="${SEED_CATALOG:-yes}" '
     BEGIN { seen_user = 0; seen_seed = 0; autoseed = (seed == "yes") ? "true" : "false" }
-    /^VALTROS_SEED_ADMIN_USERNAME=/ { print "VALTROS_SEED_ADMIN_USERNAME=" user; seen_user = 1; next }
-    /^VALTROS_AUTOSEED=/             { print "VALTROS_AUTOSEED=" autoseed;        seen_seed = 1; next }
+    /^CONTROLFORGE_SEED_ADMIN_USERNAME=/ { print "CONTROLFORGE_SEED_ADMIN_USERNAME=" user; seen_user = 1; next }
+    /^CONTROLFORGE_AUTOSEED=/             { print "CONTROLFORGE_AUTOSEED=" autoseed;        seen_seed = 1; next }
     { print }
     END {
-      if (!seen_user) print "VALTROS_SEED_ADMIN_USERNAME=" user
-      if (!seen_seed) print "VALTROS_AUTOSEED=" autoseed
+      if (!seen_user) print "CONTROLFORGE_SEED_ADMIN_USERNAME=" user
+      if (!seen_seed) print "CONTROLFORGE_AUTOSEED=" autoseed
     }
   ' "${ENV_FILE}" > "${tmp}"
   # install(1) rather than mv: the owner and mode are the point of this file,
@@ -118,12 +118,12 @@ load_secrets() {
   [[ -f "${ENV_FILE}" ]] || fail "missing ${ENV_FILE} - run without arguments first"
   # shellcheck disable=SC1090
   set -a; source "${ENV_FILE}"; set +a
-  DB_PW=$(printf '%s' "${VALTROS_DB_URL}" | sed -E 's#.*://[^:]+:([^@]+)@.*#\1#')
-  [[ -n "${DB_PW}" ]] || fail "could not parse database password from VALTROS_DB_URL"
+  DB_PW=$(printf '%s' "${CONTROLFORGE_DB_URL}" | sed -E 's#.*://[^:]+:([^@]+)@.*#\1#')
+  [[ -n "${DB_PW}" ]] || fail "could not parse database password from CONTROLFORGE_DB_URL"
   # shellcheck disable=SC1090
   set -a; source "${FW_ENV_FILE}"; set +a
-  FW_PW=$(printf '%s' "${VALTROS_FW_DB_URL}" | sed -E 's#.*://[^:]+:([^@]+)@.*#\1#')
-  [[ -n "${FW_PW}" ]] || fail "could not parse read-only password from VALTROS_FW_DB_URL"
+  FW_PW=$(printf '%s' "${CONTROLFORGE_FW_DB_URL}" | sed -E 's#.*://[^:]+:([^@]+)@.*#\1#')
+  [[ -n "${FW_PW}" ]] || fail "could not parse read-only password from CONTROLFORGE_FW_DB_URL"
 }
 
 # ------------------------------------------------------------- collations ----
@@ -213,7 +213,7 @@ apply_grants() {
 verify() {
   log "verifying application connection"
   local url out
-  url=$(printf '%s' "${VALTROS_DB_URL}" | sed -E 's#postgresql\+psycopg://#postgresql://#')
+  url=$(printf '%s' "${CONTROLFORGE_DB_URL}" | sed -E 's#postgresql\+psycopg://#postgresql://#')
   out=$(psql "${url}" -tAc "SELECT 'app-role-ok';" 2>&1) || true
   if [[ "${out}" == *app-role-ok* ]]; then
     log "application role can connect"

@@ -30,6 +30,7 @@ import type {
   Scope,
   Setting,
   Target,
+  TargetCreate,
   TestVersion,
   TestVersionCreate,
   User,
@@ -309,7 +310,12 @@ export const api = {
   targets: (query?: { enabled?: boolean; tag?: string; limit?: number; offset?: number }) =>
     get<Target[]>('/targets', query),
   target: (id: number) => get<Target>(`/targets/${id}`),
+  createTarget: (payload: TargetCreate) => post<Target>('/targets', payload),
   targetScopes: (id: number) => get<Scope[]>(`/targets/${id}/scopes`),
+  linkTargetScope: (targetId: number, scopeId: number) =>
+    put<void>(`/targets/${targetId}/scopes/${scopeId}`, undefined),
+  unlinkTargetScope: (targetId: number, scopeId: number) =>
+    del<void>(`/targets/${targetId}/scopes/${scopeId}`),
   scopes: (query?: { active?: boolean }) => get<Scope[]>('/scopes', query),
   scope: (id: number) => get<Scope>(`/scopes/${id}`),
 

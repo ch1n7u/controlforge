@@ -1,4 +1,4 @@
--- Valtros lab placeholder dump. Contains NO real data.
+-- CONTROLFORGE lab placeholder dump. Contains NO real data.
 -- LAB EXAMPLE FILE - NOT A REAL BACKUP
 CREATE TABLE example_user (id INTEGER PRIMARY KEY, username TEXT, password_hash TEXT);
 INSERT INTO example_user (username, password_hash) VALUES ('admin', 'EXAMPLE-NOT-A-REAL-HASH');

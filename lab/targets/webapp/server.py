@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Valtros lab target: lab-webapp (deliberately vulnerable, stdlib only).
+"""CONTROLFORGE lab target: lab-webapp (deliberately vulnerable, stdlib only).
 
 Deliberate weaknesses (all fake/simulated, nothing real):
   * /admin            - admin panel, no authentication
@@ -41,7 +41,7 @@ STRIPE_SECRET_KEY=EXAMPLE-NOT-A-REAL-KEY
 
 INDEX_HTML = """<!DOCTYPE html>
 <html><head><title>lab-webapp</title></head><body>
-<h1>Valtros lab-webapp</h1>
+<h1>CONTROLFORGE lab-webapp</h1>
 <p>Deliberately vulnerable application target.</p>
 <ul>
   <li><a href="/admin">/admin</a></li>

@@ -112,6 +112,21 @@ export interface Target {
   created_at: string
 }
 
+export interface TargetCreate {
+  name: string
+  host: string
+  target_type?: TargetType
+  /** 0 (or omitted) means no port, which is legitimate for a host-level target. */
+  port?: number
+  protocol?: string
+  path?: string
+  tags?: string[]
+  criticality?: Severity
+  owner?: string | null
+  notes?: string | null
+  enabled?: boolean
+}
+
 export interface ScopeEntry {
   id: number
   kind: ScopeEntryKind

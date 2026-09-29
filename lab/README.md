@@ -1,6 +1,6 @@
-# Valtros lab
+# CONTROLFORGE lab
 
-The safe, allowlisted set of deliberately-vulnerable targets that Valtros
+The safe, allowlisted set of deliberately-vulnerable targets that CONTROLFORGE
 validates its security-control engines against. Every target fails specific
 controls in a way the engines (nmap, testssl.sh, the Python HTTP-header probe,
 the HTTP path-exposure probe, nuclei) can actually observe.
@@ -12,16 +12,16 @@ from outside this host.
 
 ```sh
 # Core lab (5 services), blocks until everything is healthy:
-docker compose -f /home/chintu/Valtros/lab/docker-compose.yml up -d --wait
+docker compose -f /home/chintu/controlforge/lab/docker-compose.yml up -d --wait
 
 # Optional extra target (OWASP Juice Shop):
-docker compose -f /home/chintu/Valtros/lab/docker-compose.yml --profile juice up -d --wait juice-shop
+docker compose -f /home/chintu/controlforge/lab/docker-compose.yml --profile juice up -d --wait juice-shop
 
 # Stop:
-docker compose -f /home/chintu/Valtros/lab/docker-compose.yml --profile juice down
+docker compose -f /home/chintu/controlforge/lab/docker-compose.yml --profile juice down
 ```
 
-Compose project and bridge network are both named `valtros-lab`.
+Compose project and bridge network are both named `controlforge-lab`.
 All images build from the locally-pulled bases `alpine:3.20`, `nginx:alpine`
 and `python:3.12-alpine`; no `pip install` anywhere. The one build-time network
 dependency is `apk add openssh` in `targets/ssh/` (openssh is not in the base
@@ -35,7 +35,7 @@ image).
 | **lab-weaktls** (nginx + TLS) | `127.0.0.1:8443` | Self-signed cert generated at image build time (RSA-**1024**, 2-day validity, no SAN); `ssl_protocols TLSv1 TLSv1.1 TLSv1.2` (TLS 1.0/1.1 handshakes verified working); deliberately weak cipher list — the **NULL** entries negotiate (no encryption), while `3DES`/`RC4` entries are accepted in config but not offered by OpenSSL 3 (see notes); no HSTS | testssl.sh (protocol versions, cipher suites, certificate), nmap (`ssl-enum-ciphers`, least strength **F**; `ssl-cert`), Python http-headers probe (missing HSTS) |
 | **lab-webapp** (stdlib Python) | `127.0.0.1:8082` | `/admin` admin panel with **no authentication**; `/.git/HEAD` returns `ref: refs/heads/main`; `/.env` exposes config with obviously fake `EXAMPLE-NOT-A-REAL-SECRET` values; `/server-status` and `/phpinfo.php` return 200; `/login` sets a session cookie with **no Secure, no HttpOnly, no SameSite**; `Access-Control-Allow-Origin: *`; `/error` returns a full Python traceback; `Server:` header leaks the Python version (`BaseHTTP/0.6 Python/3.12.14`) | HTTP path-exposure probe (`/.git/HEAD`, `/.env`, `/server-status`, `/phpinfo.php`, `/admin`), Python http-headers probe (cookie flags, CORS, banner), nuclei (exposed git/env/phpinfo templates) |
 | **lab-api** (stdlib Python) | `127.0.0.1:8083` | `GET /api/v1/users` returns user records (fake EXAMPLE secrets) with **no authentication**; `GET /api/v1/admin/config` returns admin config with no authentication; `/api/v1/error` returns a full Python traceback; `Access-Control-Allow-Origin: *`; no security headers; Python-version banner | HTTP path-exposure probe (unauthenticated API endpoints), Python http-headers probe (CORS + missing headers), nuclei, nmap (`-sV`) |
-| **lab-ssh** (alpine + openssh) | `127.0.0.1:2222` | `PermitRootLogin yes` + `PasswordAuthentication yes` with the lab toy credential `root:toor` (`PermitEmptyPasswords no`); root is offered password auth | nmap (`--script ssh-auth-methods` reports `password` for root), Valtros SSH credential checks |
+| **lab-ssh** (alpine + openssh) | `127.0.0.1:2222` | `PermitRootLogin yes` + `PasswordAuthentication yes` with the lab toy credential `root:toor` (`PermitEmptyPasswords no`); root is offered password auth | nmap (`--script ssh-auth-methods` reports `password` for root), CONTROLFORGE SSH credential checks |
 | **juice-shop** (profile `juice`) | `127.0.0.1:8084` | OWASP Juice Shop's built-in vulnerability set (SQLi, XSS, broken auth, ...) | nuclei (large template set), path-exposure probe, http-headers probe |
 
 `/health` on `lab-webapp` and `lab-api` returns 200 and is the *only*

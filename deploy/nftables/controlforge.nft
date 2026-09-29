@@ -1,9 +1,9 @@
 #!/usr/sbin/nft -f
 #
-# Valtros worker egress policy.
+# CONTROLFORGE worker egress policy.
 #
 # Threat model: the worker runs external security tools (nmap, nuclei, testssl)
-# as the dedicated uid `valtros`. Even if one of those tools is induced to
+# as the dedicated uid `controlforge`. Even if one of those tools is induced to
 # open a connection somewhere, the kernel only lets traffic from that uid reach:
 #
 #   1. replies on flows it already owns - so reloading this ruleset mid-scan
@@ -17,7 +17,7 @@
 # passes addresses, never names), so the tools must not need a resolver.
 #
 # The four sets are (re)populated by scripts/sync_firewall.py, which runs from
-# the root oneshot unit valtros-fw-sync.service. The script appends
+# the root oneshot unit controlforge-fw-sync.service. The script appends
 # `add element` statements for the active scopes to this file and feeds the
 # result to a single `nft -f`, so a refresh is one atomic transaction: the
 # worker is never left without rules, not even for an instant. Loading this
@@ -25,19 +25,19 @@
 # talk to PostgreSQL and nothing else.
 #
 # Flush (deliberate teardown only - this returns the uid to unfiltered egress):
-#   sudo nft delete table inet valtros
-#   or: sudo /home/chintu/Valtros/scripts/sync_firewall.py --flush
+#   sudo nft delete table inet controlforge
+#   or: sudo /home/chintu/controlforge/scripts/sync_firewall.py --flush
 #
 # Validate syntax without loading anything:
-#   sudo nft --check -f /home/chintu/Valtros/deploy/nftables/valtros.nft
+#   sudo nft --check -f /home/chintu/controlforge/deploy/nftables/controlforge.nft
 #
-# Note: only the `valtros` uid is filtered. root, nginx (www-data) and the
+# Note: only the `controlforge` uid is filtered. root, nginx (www-data) and the
 # operator are untouched, so install.sh / lifecycle scripts can always reach
 # the machine and the API can always answer on 127.0.0.1:8000.
 
-destroy table inet valtros
+destroy table inet controlforge
 
-table inet valtros {
+table inet controlforge {
     # ------------------------------------------------------------------ sets
     # Concatenated interval sets: one element is "<address range> . <port
     # range>", so an authorization for 10.0.0.0/24 on 8080-8090 cannot be
@@ -68,19 +68,19 @@ table inet valtros {
         type filter hook output priority filter; policy accept;
 
         # (1) Keep live flows alive across ruleset reloads.
-        meta skuid valtros ct state established,related accept
+        meta skuid controlforge ct state established,related accept
 
         # (2) Loopback PostgreSQL only. The lab targets on 127.0.0.1 are NOT
         # special-cased here: they arrive through the scope sets like any other
         # destination, which keeps the allow-list auditable in one place.
-        meta skuid valtros ip daddr 127.0.0.1 tcp dport 5432 accept
-        meta skuid valtros ip6 daddr ::1 tcp dport 5432 accept
+        meta skuid controlforge ip daddr 127.0.0.1 tcp dport 5432 accept
+        meta skuid controlforge ip6 daddr ::1 tcp dport 5432 accept
 
         # (3) Active, unexpired scopes (populated by sync_firewall.py).
-        meta skuid valtros ip daddr . tcp dport @allowed_v4_tcp accept
-        meta skuid valtros ip daddr . udp dport @allowed_v4_udp accept
-        meta skuid valtros ip6 daddr . tcp dport @allowed_v6_tcp accept
-        meta skuid valtros ip6 daddr . udp dport @allowed_v6_udp accept
+        meta skuid controlforge ip daddr . tcp dport @allowed_v4_tcp accept
+        meta skuid controlforge ip daddr . udp dport @allowed_v4_udp accept
+        meta skuid controlforge ip6 daddr . tcp dport @allowed_v6_tcp accept
+        meta skuid controlforge ip6 daddr . udp dport @allowed_v6_udp accept
 
         # (4) Loopback the rules above did not allow is refused outright rather
         # than blackholed. No packet here leaves the host, so an immediate
@@ -92,15 +92,15 @@ table inet valtros {
         # defaults to localhost:4433. Blackholed, that probe consumes the entire
         # run budget and the run is reported as a timeout instead of a result.
         # A refusal keeps the deny while letting the tool get on with its work.
-        meta skuid valtros ip daddr 127.0.0.1 meta l4proto tcp counter reject with tcp reset
-        meta skuid valtros ip daddr 127.0.0.1 counter reject
-        meta skuid valtros ip6 daddr ::1 meta l4proto tcp counter reject with tcp reset
-        meta skuid valtros ip6 daddr ::1 counter reject
+        meta skuid controlforge ip daddr 127.0.0.1 meta l4proto tcp counter reject with tcp reset
+        meta skuid controlforge ip daddr 127.0.0.1 counter reject
+        meta skuid controlforge ip6 daddr ::1 meta l4proto tcp counter reject with tcp reset
+        meta skuid controlforge ip6 daddr ::1 counter reject
 
         # (5) Default deny for this uid. `policy accept` above keeps every
         # other uid untouched; `counter` makes drops visible in
-        # `nft list table inet valtros`. Destinations off this host keep
+        # `nft list table inet controlforge`. Destinations off this host keep
         # the silent drop: a remote target learns nothing from a black hole.
-        meta skuid valtros counter drop
+        meta skuid controlforge counter drop
     }
 }

@@ -16,7 +16,7 @@ from app.core.security import generate_password, hash_password
 from app.models.auth import User
 from app.models.enums import Role
 
-logger = logging.getLogger("valtros.seed")
+logger = logging.getLogger("controlforge.seed")
 
 
 def ensure_admin(db: OrmSession) -> tuple[User, str] | tuple[User, None]:
@@ -36,7 +36,7 @@ def ensure_admin(db: OrmSession) -> tuple[User, str] | tuple[User, None]:
     user = User(
         username=settings.seed_admin_username,
         role=Role.ADMIN,
-        full_name="Valtros Administrator",
+        full_name="CONTROLFORGE Administrator",
         password_hash=hash_password(password),
         must_change_password=True,
     )
@@ -102,8 +102,8 @@ def main() -> None:
             f"{lab['targets']} targets, {lab['scopes']} scopes"
         )
     if result["admin_created"]:
-        print("initial password: stored in VALTROS_ADMIN_INITIAL_PASSWORD")
-        print("                  (/etc/valtros/valtros.env, root:valtros 0640)")
+        print("initial password: stored in CONTROLFORGE_ADMIN_INITIAL_PASSWORD")
+        print("                  (/etc/controlforge/controlforge.env, root:controlforge 0640)")
 
 
 if __name__ == "__main__":

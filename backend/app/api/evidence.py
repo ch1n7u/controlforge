@@ -34,7 +34,7 @@ from app.schemas.evidence import (
 )
 
 router = APIRouter(prefix="/api", tags=["evidence"])
-logger = logging.getLogger("valtros.api.evidence")
+logger = logging.getLogger("controlforge.api.evidence")
 
 _CHUNK = 64 * 1024
 

@@ -149,7 +149,7 @@ class NucleiParams(StrictParams):
 
 
 class LocalBaselineParams(StrictParams):
-    """Read-only inspection of the machine Valtros itself runs on."""
+    """Read-only inspection of the machine CONTROLFORGE itself runs on."""
 
     checks: list[str] = Field(
         default_factory=lambda: ["sysctls", "file_modes", "sshd_config"],
@@ -244,9 +244,9 @@ ALLOWED_LOCAL_PATHS = (
     "/etc/passwd",
     "/etc/shadow",
     "/etc/ssh/sshd_config",
-    "/etc/valtros/valtros.env",
-    "/var/lib/valtros",
-    "/var/lib/valtros/evidence",
+    "/etc/controlforge/controlforge.env",
+    "/var/lib/controlforge",
+    "/var/lib/controlforge/evidence",
 )
 
 # Curated exposure paths. Each is a well-known location that either leaks

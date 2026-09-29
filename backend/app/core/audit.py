@@ -23,7 +23,7 @@ from app.config import get_settings
 from app.models.audit import AuditLog
 from app.models.auth import User
 
-logger = logging.getLogger("valtros.audit")
+logger = logging.getLogger("controlforge.audit")
 _write_lock = threading.Lock()
 
 

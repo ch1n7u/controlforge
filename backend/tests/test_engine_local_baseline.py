@@ -97,9 +97,9 @@ def _stat_table(**overrides):
         "/etc/passwd": _stat(0o644, 0),
         "/etc/shadow": _stat(0o640, 0),
         "/etc/ssh/sshd_config": _stat(0o644, 0),
-        "/etc/valtros/valtros.env": _stat(0o640, 0),
-        "/var/lib/valtros": _stat(0o750, 1000, directory=True),
-        "/var/lib/valtros/evidence": _stat(0o770, 1000, directory=True),
+        "/etc/controlforge/controlforge.env": _stat(0o640, 0),
+        "/var/lib/controlforge": _stat(0o750, 1000, directory=True),
+        "/var/lib/controlforge/evidence": _stat(0o770, 1000, directory=True),
     }
     table.update(overrides)
     return table
@@ -149,19 +149,19 @@ def test_any_bit_outside_the_rule_mask_is_not_compliant(monkeypatch, tmp_path):
         monkeypatch,
         {
             "/etc/shadow": _stat(0o644, 0),  # world-readable: bit outside 0640
-            "/etc/valtros/valtros.env": _stat(0o660, 0),
+            "/etc/controlforge/controlforge.env": _stat(0o660, 0),
         },
     )
     ctx, _ = _ctx(tmp_path)
     facts = _files_by_key(
         local_baseline._file_facts(
-            ["/etc/shadow", "/etc/valtros/valtros.env"], ctx
+            ["/etc/shadow", "/etc/controlforge/controlforge.env"], ctx
         )
     )
 
     assert facts["/etc/shadow"].value["mask_ok"] is False
     assert facts["/etc/shadow"].value["compliant"] is False
-    assert facts["/etc/valtros/valtros.env"].value["mask_ok"] is False
+    assert facts["/etc/controlforge/controlforge.env"].value["mask_ok"] is False
 
 
 def test_a_wrong_owner_is_not_compliant(monkeypatch, tmp_path):
@@ -178,10 +178,10 @@ def test_a_wrong_owner_is_not_compliant(monkeypatch, tmp_path):
 def test_ownership_not_in_the_rule_is_null_not_false(monkeypatch, tmp_path):
     """The service directories are owned by the worker account; ownership is
     not part of their rule, and None says 'not judged', not 'failed'."""
-    _patch_stat(monkeypatch, {"/var/lib/valtros": _stat(0o750, 1000, directory=True)})
+    _patch_stat(monkeypatch, {"/var/lib/controlforge": _stat(0o750, 1000, directory=True)})
     ctx, _ = _ctx(tmp_path)
-    fact = _files_by_key(local_baseline._file_facts(["/var/lib/valtros"], ctx))[
-        "/var/lib/valtros"
+    fact = _files_by_key(local_baseline._file_facts(["/var/lib/controlforge"], ctx))[
+        "/var/lib/controlforge"
     ]
 
     assert fact.value["uid_ok"] is None
@@ -195,22 +195,22 @@ def test_setgid_and_sticky_are_outside_the_mask_comparison(monkeypatch, tmp_path
     _patch_stat(
         monkeypatch,
         {
-            "/var/lib/valtros": _stat(0o2750, 1000, directory=True),
-            "/var/lib/valtros/evidence": _stat(0o1770, 1000, directory=True),
+            "/var/lib/controlforge": _stat(0o2750, 1000, directory=True),
+            "/var/lib/controlforge/evidence": _stat(0o1770, 1000, directory=True),
         },
     )
     ctx, _ = _ctx(tmp_path)
     facts = _files_by_key(
         local_baseline._file_facts(
-            ["/var/lib/valtros", "/var/lib/valtros/evidence"], ctx
+            ["/var/lib/controlforge", "/var/lib/controlforge/evidence"], ctx
         )
     )
 
-    assert facts["/var/lib/valtros"].value["setgid"] is True
-    assert facts["/var/lib/valtros"].value["mask_ok"] is True
-    assert facts["/var/lib/valtros"].value["compliant"] is True
-    assert facts["/var/lib/valtros/evidence"].value["sticky"] is True
-    assert facts["/var/lib/valtros/evidence"].value["compliant"] is True
+    assert facts["/var/lib/controlforge"].value["setgid"] is True
+    assert facts["/var/lib/controlforge"].value["mask_ok"] is True
+    assert facts["/var/lib/controlforge"].value["compliant"] is True
+    assert facts["/var/lib/controlforge/evidence"].value["sticky"] is True
+    assert facts["/var/lib/controlforge/evidence"].value["compliant"] is True
 
 
 def test_an_unreadable_path_is_unobserved_not_compliant(monkeypatch, tmp_path):

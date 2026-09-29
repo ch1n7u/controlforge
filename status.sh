@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Show what Valtros has running right now: service states, listeners, the HTTP
+# Show what CONTROLFORGE has running right now: service states, listeners, the HTTP
 # answers (API on the configured bind, UI on port 80), and the worker egress
 # firewall. Works without root; uses `sudo -n` for the firewall peek when it is
 # available.
@@ -9,19 +9,19 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-VALTROS_REPO_DIR="$REPO_ROOT"
-export VALTROS_REPO_DIR
+CONTROLFORGE_REPO_DIR="$REPO_ROOT"
+export CONTROLFORGE_REPO_DIR
 
 # shellcheck source=scripts/lib.sh
 source "$REPO_ROOT/scripts/lib.sh"
 
-VALTROS_LOG_TAG="status"
-valtros_load_install_conf
+CONTROLFORGE_LOG_TAG="status"
+controlforge_load_install_conf
 
 LAN_IP="$(detect_lan_ip || true)"
 fail=0
 
-echo "Valtros status - $(date '+%Y-%m-%d %H:%M:%S')"
+echo "CONTROLFORGE status - $(date '+%Y-%m-%d %H:%M:%S')"
 echo "repository: $REPO_ROOT"
 echo "database:   ${DB_USER}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
 echo "account:    ${SERVICE_USER}   state: ${STATE_DIR}   logs: ${LOG_DIR}"
@@ -99,18 +99,18 @@ nft_out=""
 nft_inspectable=0
 if [[ ${EUID} -eq 0 ]]; then
     nft_inspectable=1
-    nft_out="$(nft list table inet valtros 2>/dev/null || true)"
+    nft_out="$(nft list table inet controlforge 2>/dev/null || true)"
 elif sudo -n true >/dev/null 2>&1; then
     nft_inspectable=1
-    nft_out="$(sudo -n nft list table inet valtros 2>/dev/null || true)"
+    nft_out="$(sudo -n nft list table inet controlforge 2>/dev/null || true)"
 fi
 if [[ $nft_inspectable -eq 0 ]]; then
     echo "  need root (or passwordless sudo) to inspect the firewall table"
 elif [[ -n "$nft_out" ]]; then
     drops="$(printf '%s\n' "$nft_out" | grep -oE 'counter packets [0-9]+ bytes [0-9]+' | head -n1 || true)"
-    echo "  table inet valtros: loaded (worker egress filtered${drops:+; drop $drops})"
+    echo "  table inet controlforge: loaded (worker egress filtered${drops:+; drop $drops})"
 else
-    echo "  table inet valtros: not loaded (worker egress unfiltered)"
+    echo "  table inet controlforge: not loaded (worker egress unfiltered)"
     echo "  refresh with: sudo systemctl start $FW_UNIT"
 fi
 

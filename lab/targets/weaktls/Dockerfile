@@ -1,4 +1,4 @@
-# Valtros lab target: lab-weaktls
+# CONTROLFORGE lab target: lab-weaktls
 #
 # Stage 1 generates the deliberately weak self-signed certificate using only
 # the Python standard library (gen_cert.py) so this image builds fully offline

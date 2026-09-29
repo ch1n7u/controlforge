@@ -29,7 +29,7 @@ from pathlib import Path
 DEFAULT_CANCEL_POLL_SECONDS = 1.0
 TERMINATE_GRACE_SECONDS = 5.0
 
-# Deliberately minimal. No VALTROS_* variables, no SSH agent, no proxy
+# Deliberately minimal. No CONTROLFORGE_* variables, no SSH agent, no proxy
 # settings that could redirect traffic outside the authorized scope.
 BASE_ENV: dict[str, str] = {
     "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",

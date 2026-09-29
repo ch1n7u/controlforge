@@ -80,7 +80,7 @@ def _stub_fetch(monkeypatch, server):
 
 
 def _is_baseline(path: str) -> bool:
-    return path.startswith("/valtros-nonexistent-")
+    return path.startswith("/controlforge-nonexistent-")
 
 
 def _by_key(result):

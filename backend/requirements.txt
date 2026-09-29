@@ -1,4 +1,4 @@
-# Valtros backend dependencies
+# CONTROLFORGE backend dependencies
 #
 # This host has no Go/Rust toolchain, so every dependency must ship a
 # prebuilt wheel. Install with:

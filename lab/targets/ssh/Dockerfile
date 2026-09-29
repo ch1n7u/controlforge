@@ -1,4 +1,4 @@
-# Valtros lab target: lab-ssh
+# CONTROLFORGE lab target: lab-ssh
 # Deliberately weak SSH target: root login + password auth with the lab toy
 # credential "toor" (PermitEmptyPasswords stays off).
 #
@@ -10,7 +10,7 @@ RUN apk add --no-cache openssh \
  && mkdir -p /run/sshd \
  && ssh-keygen -A \
  && echo 'root:toor' | chpasswd \
- && printf 'Valtros lab-ssh: deliberately weak SSH target.\nThe root password is the lab toy credential "toor" - never reuse it.\n' > /etc/motd
+ && printf 'CONTROLFORGE lab-ssh: deliberately weak SSH target.\nThe root password is the lab toy credential "toor" - never reuse it.\n' > /etc/motd
 
 COPY sshd_config /etc/ssh/sshd_config
 

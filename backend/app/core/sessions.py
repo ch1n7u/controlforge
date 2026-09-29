@@ -20,7 +20,7 @@ from app.core.security import (
 )
 from app.models.auth import User, UserSession
 
-logger = logging.getLogger("valtros.auth")
+logger = logging.getLogger("controlforge.auth")
 
 LOCKOUT_THRESHOLD = 5
 LOCKOUT_MINUTES = 15

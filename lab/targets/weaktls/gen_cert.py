@@ -2,7 +2,7 @@
 """Generate a deliberately weak self-signed X.509 certificate + RSA key using
 ONLY the Python standard library (no OpenSSL CLI, no `cryptography` package).
 
-Why hand-rolled DER: the Valtros lab must build fully offline from three
+Why hand-rolled DER: the CONTROLFORGE lab must build fully offline from three
 already-pulled base images, none of which ship the `openssl` CLI. This script
 runs in a python:3.12-alpine build stage.
 

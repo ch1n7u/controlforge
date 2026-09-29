@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 #
-# Stop the Valtros API and worker. PostgreSQL and nginx are left alone
+# Stop the CONTROLFORGE API and worker. PostgreSQL and nginx are left alone
 # (they serve other work), and the firewall rules stay loaded on purpose:
 # stopping the app is not a reason to open the worker uid back up.
 set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-VALTROS_REPO_DIR="$REPO_ROOT"
-export VALTROS_REPO_DIR
+CONTROLFORGE_REPO_DIR="$REPO_ROOT"
+export CONTROLFORGE_REPO_DIR
 
 # shellcheck source=scripts/lib.sh
 source "$REPO_ROOT/scripts/lib.sh"
 
-VALTROS_LOG_TAG="stop"
-valtros_load_install_conf
+CONTROLFORGE_LOG_TAG="stop"
+controlforge_load_install_conf
 
 [[ ${EUID} -eq 0 ]] || exec sudo -- "$0" "$@"
 

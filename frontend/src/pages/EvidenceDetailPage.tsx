@@ -260,7 +260,7 @@ export function EvidenceDetailPage() {
 
             <p className="text-[12px] text-dim">
               Evidence is written once and never changed, so any mismatch means the store itself was
-              altered outside Valtros.
+              altered outside CONTROLFORGE.
             </p>
           </div>
         </Panel>

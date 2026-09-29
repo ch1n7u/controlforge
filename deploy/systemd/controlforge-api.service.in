@@ -1,5 +1,5 @@
 [Unit]
-Description=Valtros API (FastAPI/uvicorn on @API_BIND@:@API_PORT@)
+Description=CONTROLFORGE API (FastAPI/uvicorn on @API_BIND@:@API_PORT@)
 After=network-online.target postgresql.service
 Wants=network-online.target postgresql.service
 
@@ -8,7 +8,7 @@ Type=exec
 User=@SERVICE_USER@
 Group=@SERVICE_GROUP@
 WorkingDirectory=@REPO_DIR@/backend
-EnvironmentFile=@CONF_DIR@/valtros.env
+EnvironmentFile=@CONF_DIR@/controlforge.env
 Environment=PYTHONUNBUFFERED=1
 ExecStart=@PYTHON@ -m uvicorn app.main:app --host @API_BIND@ --port @API_PORT@
 

@@ -55,6 +55,7 @@ const TITLE_ROUTES: Array<[RegExp, string]> = [
   [/^\/tests\/new/, 'New test'],
   [/^\/tests\/[^/]+/, 'Test'],
   [/^\/tests/, 'Tests'],
+  [/^\/targets\/new/, 'New target'],
   [/^\/targets\/[^/]+/, 'Target'],
   [/^\/targets/, 'Targets'],
   [/^\/scopes\/[^/]+/, 'Scope'],
@@ -92,7 +93,7 @@ function EnvironmentStrip() {
     <div className="space-y-1.5 border-t border-edge px-3 py-2.5 text-[11px]">
       <div
         className="flex items-center gap-2"
-        title={data ? `Valtros ${data.version}` : undefined}
+        title={data ? `CONTROLFORGE ${data.version}` : undefined}
       >
         <span
           aria-hidden
@@ -132,10 +133,10 @@ export function Layout() {
   const [passwordOpen, setPasswordOpen] = useState(false)
 
   // The browser tab is part of the product surface; leaving every page titled
-  // "Valtros" would make a stack of open tabs indistinguishable.
+  // "CONTROLFORGE" would make a stack of open tabs indistinguishable.
   useEffect(() => {
     const match = TITLE_ROUTES.find(([pattern]) => pattern.test(pathname))
-    document.title = match ? `${match[1]} · Valtros` : 'Valtros'
+    document.title = match ? `${match[1]} · CONTROLFORGE` : 'CONTROLFORGE'
   }, [pathname])
 
   const doLogout = async () => {

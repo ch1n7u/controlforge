@@ -1,7 +1,7 @@
 """Runtime configuration, loaded from the environment.
 
 In production the systemd units supply these via EnvironmentFile=
-/etc/valtros/valtros.env. For local development the same file is
+/etc/controlforge/controlforge.env. For local development the same file is
 read directly when the process is allowed to see it.
 """
 
@@ -19,9 +19,9 @@ ENV_FILE_CANDIDATES = tuple(
     for path in (
         # The systemd units pass the settings in as real environment variables,
         # so this path only matters for command-line runs (alembic, the seeder)
-        # that are started without a unit. VALTROS_ENV_FILE lets those runs work
+        # that are started without a unit. CONTROLFORGE_ENV_FILE lets those runs work
         # when the install did not use the default config directory.
-        os.environ.get("VALTROS_ENV_FILE", "/etc/valtros/valtros.env"),
+        os.environ.get("CONTROLFORGE_ENV_FILE", "/etc/controlforge/controlforge.env"),
         os.path.join(os.path.dirname(__file__), "..", "..", ".env"),
     )
     if path
@@ -30,17 +30,17 @@ ENV_FILE_CANDIDATES = tuple(
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="VALTROS_",
+        env_prefix="CONTROLFORGE_",
         env_file=ENV_FILE_CANDIDATES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
     env: str = "production"
-    db_url: str = "postgresql+psycopg://valtros@127.0.0.1:5432/valtros"
+    db_url: str = "postgresql+psycopg://controlforge@127.0.0.1:5432/controlforge"
     secret_key: str = ""
-    evidence_dir: Path = Path("/var/lib/valtros/evidence")
-    audit_jsonl_path: Path = Path("/var/log/valtros/audit.jsonl")
+    evidence_dir: Path = Path("/var/lib/controlforge/evidence")
+    audit_jsonl_path: Path = Path("/var/log/controlforge/audit.jsonl")
     admin_initial_password: str | None = None
 
     # --- sessions -----------------------------------------------------------
@@ -85,7 +85,7 @@ def get_settings() -> Settings:
     settings = Settings()
     if not settings.secret_key:
         raise RuntimeError(
-            "VALTROS_SECRET_KEY is not set. Run scripts/bootstrap_db.sh to "
-            "generate /etc/valtros/valtros.env, or export the variable."
+            "CONTROLFORGE_SECRET_KEY is not set. Run scripts/bootstrap_db.sh to "
+            "generate /etc/controlforge/controlforge.env, or export the variable."
         )
     return settings

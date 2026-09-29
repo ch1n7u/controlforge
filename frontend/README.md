@@ -1,6 +1,6 @@
-# Valtros web UI
+# CONTROLFORGE web UI
 
-The single-page application for Valtros. One origin, one front door: nginx
+The single-page application for CONTROLFORGE. One origin, one front door: nginx
 serves the built files from `dist/` and reverse-proxies `/api` to the API on
 `127.0.0.1:8000`. Nothing in here talks to the API on any other host or port.
 

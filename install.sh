@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Valtros installer - wires a checked-out tree into the host. Idempotent: safe
+# CONTROLFORGE installer - wires a checked-out tree into the host. Idempotent: safe
 # to run any number of times.
 #
 # What it does:
@@ -27,39 +27,39 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-VALTROS_REPO_DIR="$REPO_ROOT"
-export VALTROS_REPO_DIR
+CONTROLFORGE_REPO_DIR="$REPO_ROOT"
+export CONTROLFORGE_REPO_DIR
 
 # shellcheck source=scripts/lib.sh
 source "$REPO_ROOT/scripts/lib.sh"
 
-VALTROS_LOG_TAG="install"
-valtros_load_install_conf
+CONTROLFORGE_LOG_TAG="install"
+controlforge_load_install_conf
 
 # Forced after the config file is read, not before: the units must point at the
 # tree that is actually running this script. If the repository has been moved,
 # an install.conf written by the previous location would otherwise be rendered
 # back into every unit, and the services would start from a directory that no
 # longer exists.
-VALTROS_REPO_DIR="$REPO_ROOT"
-export VALTROS_REPO_DIR
+CONTROLFORGE_REPO_DIR="$REPO_ROOT"
+export CONTROLFORGE_REPO_DIR
 
 [[ ${EUID} -eq 0 ]] || exec sudo -- "$0" "$@"
 
-valtros_require_systemd
+controlforge_require_systemd
 
 # --- 0. templates present ----------------------------------------------------
 templates=(
-    "$REPO_ROOT/deploy/systemd/valtros-api.service.in"
-    "$REPO_ROOT/deploy/systemd/valtros-worker.service.in"
-    "$REPO_ROOT/deploy/systemd/valtros-fw-sync.service.in"
-    "$REPO_ROOT/deploy/systemd/valtros-fw-sync.timer.in"
-    "$REPO_ROOT/deploy/nginx/valtros.conf.in"
-    "$REPO_ROOT/deploy/sudoers/valtros.in"
+    "$REPO_ROOT/deploy/systemd/controlforge-api.service.in"
+    "$REPO_ROOT/deploy/systemd/controlforge-worker.service.in"
+    "$REPO_ROOT/deploy/systemd/controlforge-fw-sync.service.in"
+    "$REPO_ROOT/deploy/systemd/controlforge-fw-sync.timer.in"
+    "$REPO_ROOT/deploy/nginx/controlforge.conf.in"
+    "$REPO_ROOT/deploy/sudoers/controlforge.in"
 )
 extra_required=(
     "$REPO_ROOT/scripts/sync_firewall.py"
-    "$REPO_ROOT/deploy/nftables/valtros.nft"
+    "$REPO_ROOT/deploy/nftables/controlforge.nft"
     "$REPO_ROOT/scripts/lab_up.sh"
     "$REPO_ROOT/scripts/lab_down.sh"
 )
@@ -99,8 +99,8 @@ fi
 
 # --- 3. config directory ------------------------------------------------------
 install -d -m 0750 -o root -g "$SERVICE_GROUP" "$CONF_DIR"
-if [[ ! -s "$CONF_DIR/valtros.env" ]]; then
-    warn "no $CONF_DIR/valtros.env - the API will not start until provision.sh (or scripts/bootstrap_db.sh) writes it"
+if [[ ! -s "$CONF_DIR/controlforge.env" ]]; then
+    warn "no $CONF_DIR/controlforge.env - the API will not start until provision.sh (or scripts/bootstrap_db.sh) writes it"
 fi
 
 # --- 4. state directories ----------------------------------------------------
@@ -115,10 +115,10 @@ chmod 0750 "$STATE_DIR"
 say "state directories ready ($STATE_DIR, $LOG_DIR)"
 
 # --- 5. systemd units --------------------------------------------------------
-for unit in valtros-api.service valtros-worker.service \
-            valtros-fw-sync.service valtros-fw-sync.timer
+for unit in controlforge-api.service controlforge-worker.service \
+            controlforge-fw-sync.service controlforge-fw-sync.timer
 do
-    valtros_render "$REPO_ROOT/deploy/systemd/${unit}.in" \
+    controlforge_render "$REPO_ROOT/deploy/systemd/${unit}.in" \
                    "/etc/systemd/system/${unit}" 0644
 done
 systemctl daemon-reload
@@ -137,7 +137,7 @@ systemctl enable nginx.service >/dev/null 2>&1 \
 # --- 6. nginx site -----------------------------------------------------------
 # nginx has no single config layout across distributions: Debian and its
 # derivatives use sites-available/, everything else drops files into conf.d/.
-family="$(valtros_distro_family)"
+family="$(controlforge_distro_family)"
 case "$family" in
     debian)
         NGINX_AVAIL=/etc/nginx/sites-available
@@ -149,8 +149,8 @@ case "$family" in
         ;;
 esac
 install -d -m 0755 "$NGINX_AVAIL"
-NGINX_SITE="$NGINX_AVAIL/valtros.conf"
-valtros_render "$REPO_ROOT/deploy/nginx/valtros.conf.in" "$NGINX_SITE" 0644
+NGINX_SITE="$NGINX_AVAIL/controlforge.conf"
+controlforge_render "$REPO_ROOT/deploy/nginx/controlforge.conf.in" "$NGINX_SITE" 0644
 
 if [[ "$EXPOSE_LAN" == "yes" ]]; then
     LAN_IP="$(detect_lan_ip || true)"
@@ -176,7 +176,7 @@ else
 fi
 
 if [[ -n "$NGINX_ENABLED" ]]; then
-    ln -sfn "$NGINX_SITE" "$NGINX_ENABLED/valtros.conf"
+    ln -sfn "$NGINX_SITE" "$NGINX_ENABLED/controlforge.conf"
     if [[ -e "$NGINX_ENABLED/default" ]]; then
         rm -f "$NGINX_ENABLED/default"
         say "disabled the nginx default site (file kept in sites-available/)"
@@ -199,9 +199,9 @@ say "nginx configuration validates (nginx not reloaded)"
 # --- 7. sudoers drop-in ------------------------------------------------------
 SUDOERS_TMP="$(mktemp)"
 trap 'rm -f "$SUDOERS_TMP"' EXIT
-valtros_render "$REPO_ROOT/deploy/sudoers/valtros.in" "$SUDOERS_TMP" 0440
+controlforge_render "$REPO_ROOT/deploy/sudoers/controlforge.in" "$SUDOERS_TMP" 0440
 visudo -c -f "$SUDOERS_TMP" >/dev/null || die "sudoers drop-in failed visudo validation"
-install -m 0440 -o root -g root "$SUDOERS_TMP" /etc/sudoers.d/valtros
+install -m 0440 -o root -g root "$SUDOERS_TMP" /etc/sudoers.d/controlforge
 if visudo -c >/dev/null 2>&1; then
     say "sudoers drop-in installed and the full sudoers tree validates"
 else
@@ -213,13 +213,13 @@ fi
 # config file claiming settings that were never applied. Values are the plain
 # resolved ones - there are no secrets in any of them.
 cat > "$CONF_DIR/install.conf" <<EOF
-# Written by Valtros install.sh on $(date '+%Y-%m-%d %H:%M:%S %z').
+# Written by CONTROLFORGE install.sh on $(date '+%Y-%m-%d %H:%M:%S %z').
 # Read by scripts/lib.sh. Contains no secrets - passwords and keys are in
-# valtros.env and fw.env in this directory.
+# controlforge.env and fw.env in this directory.
 #
 # Edit a value here and re-run ./install.sh to apply it.
 # (Do not edit while a lifecycle script is running.)
-VALTROS_REPO_DIR="$REPO_ROOT"
+CONTROLFORGE_REPO_DIR="$REPO_ROOT"
 SERVICE_USER="$SERVICE_USER"
 SERVICE_GROUP="$SERVICE_GROUP"
 CONF_DIR="$CONF_DIR"

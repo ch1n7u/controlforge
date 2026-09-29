@@ -1,4 +1,4 @@
-"""Read-only inspection of the machine Valtros runs on.
+"""Read-only inspection of the machine CONTROLFORGE runs on.
 
 Touches no network at all. This engine exists because the platform's own host is
 a target like any other: if the box that does the validating is not hardened,
@@ -72,16 +72,16 @@ FILE_BASELINE: dict[str, FileRule] = {
     "/etc/passwd": FileRule(0o644, 0, "world-readable account list"),
     "/etc/shadow": FileRule(0o640, 0, "password hashes readable only by root and shadow"),
     "/etc/ssh/sshd_config": FileRule(0o644, 0, "sshd configuration not world-writable"),
-    "/etc/valtros/valtros.env": FileRule(
-        0o640, 0, "Valtros secrets readable only by root and the service group"
+    "/etc/controlforge/controlforge.env": FileRule(
+        0o640, 0, "CONTROLFORGE secrets readable only by root and the service group"
     ),
     # The state directories are owned by the service account rather than root
     # because the worker writes there; ownership is not the control, being
     # inaccessible to every other local user is.
-    "/var/lib/valtros": FileRule(
+    "/var/lib/controlforge": FileRule(
         0o750, None, "service state directory not readable by other local users"
     ),
-    "/var/lib/valtros/evidence": FileRule(
+    "/var/lib/controlforge/evidence": FileRule(
         0o770,
         None,
         "evidence store writable by the worker but not world-accessible",

@@ -87,7 +87,7 @@ def _capture_soft_404(target: TargetView, scheme: str, method: str, timeout: flo
     unmarked path look exposed. If this probe fails, the engine proceeds without
     a baseline and says so, rather than assuming there is nothing to compare to.
     """
-    probe = f"/valtros-nonexistent-{secrets.token_hex(8)}"
+    probe = f"/controlforge-nonexistent-{secrets.token_hex(8)}"
     try:
         return fetch(
             target,

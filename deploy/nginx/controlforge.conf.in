@@ -1,11 +1,11 @@
-# Valtros site - loopback and (optionally) the machine's LAN address.
+# CONTROLFORGE site - loopback and (optionally) the machine's LAN address.
 #
 # Template. Rendered by @REPO_DIR@/install.sh with the install-time values and
 # installed as:
-#     Debian/Ubuntu/Kali   /etc/nginx/sites-available/valtros.conf
+#     Debian/Ubuntu/Kali   /etc/nginx/sites-available/controlforge.conf
 #                          (symlinked into sites-enabled/)
-#     RHEL/Fedora/openSUSE /etc/nginx/conf.d/valtros.conf
-#     Arch                 /etc/nginx/conf.d/valtros.conf
+#     RHEL/Fedora/openSUSE /etc/nginx/conf.d/controlforge.conf
+#     Arch                 /etc/nginx/conf.d/controlforge.conf
 #
 # The LAN address is DHCP-assigned, so every line tagged "#LAN_IP" is rewritten
 # by install.sh from `ip -4 addr` on each run. With EXPOSE_LAN=no those lines
@@ -21,7 +21,7 @@
 # Logging: the custom format below deliberately has no $http_cookie,
 # $http_authorization or $request_body field - the session cookie never
 # reaches a log file.
-log_format valtros_no_cookie
+log_format controlforge_no_cookie
     '$remote_addr - $remote_user [$time_local] "$request" '
     '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
 
@@ -34,8 +34,8 @@ server {
     root @REPO_DIR@/frontend/dist;
     index index.html;
 
-    access_log /var/log/nginx/valtros.access.log valtros_no_cookie;
-    error_log  /var/log/nginx/valtros.error.log warn;
+    access_log /var/log/nginx/controlforge.access.log controlforge_no_cookie;
+    error_log  /var/log/nginx/controlforge.error.log warn;
 
     # --- security headers ---------------------------------------------------
     add_header X-Content-Type-Options "nosniff" always;

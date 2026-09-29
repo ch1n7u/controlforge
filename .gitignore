@@ -1,7 +1,7 @@
 # Secrets and local environment.
 #
 # The real secret files are not in this tree: bootstrap_db.sh writes them to
-# /etc/valtros/valtros.env and /etc/valtros/fw.env (root:valtros, 0640/0600),
+# /etc/controlforge/controlforge.env and /etc/controlforge/fw.env (root:controlforge, 0640/0600),
 # outside the repository. These patterns exist because config.py also accepts a
 # .env in the repository root for command-line runs, and because a developer
 # working on this will inevitably create one.

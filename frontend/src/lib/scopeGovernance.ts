@@ -15,6 +15,13 @@ export function expiryState(scope: Scope): ExpiryState {
   return 'ok'
 }
 
+/** Why a scope would not authorize a run, for pickers that list scopes. */
+export function authorizationSuffix(scope: Scope): string {
+  if (!scope.active) return ' (inactive)'
+  if (expiryState(scope) === 'expired') return ' (expired)'
+  return ''
+}
+
 export function governanceProblems(scope: Scope): string[] {
   const problems: string[] = []
   if (!scope.active) problems.push('inactive')

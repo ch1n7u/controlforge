@@ -1,4 +1,4 @@
-# Valtros lab target: lab-webapp
+# CONTROLFORGE lab target: lab-webapp
 # Stdlib-only Python HTTP server: no pip installs, builds fully offline.
 FROM python:3.12-alpine
 

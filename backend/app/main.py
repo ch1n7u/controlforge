@@ -1,4 +1,4 @@
-"""Valtros API application."""
+"""CONTROLFORGE API application."""
 
 from __future__ import annotations
 
@@ -18,14 +18,14 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
-logger = logging.getLogger("valtros")
+logger = logging.getLogger("controlforge")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(
-        "Valtros %s starting (env=%s, safe_mode=%s, evidence=%s)",
+        "CONTROLFORGE %s starting (env=%s, safe_mode=%s, evidence=%s)",
         VERSION,
         settings.env,
         settings.safe_mode,
@@ -33,19 +33,19 @@ async def lifespan(app: FastAPI):
     )
     yield
     engine.dispose()
-    logger.info("Valtros stopped")
+    logger.info("CONTROLFORGE stopped")
 
 
 _settings = get_settings()
 
 app = FastAPI(
-    title="Valtros",
+    title="CONTROLFORGE",
     version=VERSION,
     description="Continuous security control validation and effectiveness testing.",
     # A platform built to constrain what may reach a target should not publish
     # its own full API surface to everyone who can open the dashboard on the
     # LAN. The interactive schema is a development convenience, so it is served
-    # only when VALTROS_ENV says this is a development instance; the SPA
+    # only when CONTROLFORGE_ENV says this is a development instance; the SPA
     # talks to the API directly and never reads the schema.
     docs_url="/api/docs" if _settings.is_dev else None,
     redoc_url=None,

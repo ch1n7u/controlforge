@@ -13,7 +13,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
 
   useEffect(() => {
-    document.title = 'Sign in · Valtros'
+    document.title = 'Sign in · CONTROLFORGE'
   }, [])
 
   const state = location.state as

@@ -1,4 +1,4 @@
-"""Alembic environment. The database URL comes from Valtros settings."""
+"""Alembic environment. The database URL comes from CONTROLFORGE settings."""
 
 from __future__ import annotations
 

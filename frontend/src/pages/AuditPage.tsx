@@ -200,7 +200,7 @@ export function AuditPage() {
     <div className="space-y-4">
       <PageHeader
         title="Audit log"
-        subtitle="Append-only. Every change Valtros accepted is recorded here with the account, address and request that made it."
+        subtitle="Append-only. Every change CONTROLFORGE accepted is recorded here with the account, address and request that made it."
       />
 
       <Toolbar

@@ -40,7 +40,7 @@ from app.runner.worker import Worker
 LAB_HOST = "127.0.0.1"
 LAB_HEADERS_PORT = 8081
 LAB_WEBAPP_PORT = 8082
-ABSENT_HEADER = "x-valtros-probe"
+ABSENT_HEADER = "x-controlforge-probe"
 
 # The assertion that fails against the lab's header target no matter how that
 # container is configured: it asks for a header nothing would ever send.

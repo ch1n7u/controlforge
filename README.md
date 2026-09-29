@@ -1,7 +1,7 @@
-# Valtros
+# CONTROLFORGE
 
 Continuous security **control validation and effectiveness testing**, running
-entirely on this machine. Valtros is not a scanner with a web front end. It
+entirely on this machine. CONTROLFORGE is not a scanner with a web front end. It
 is a control-validation platform: a security control is defined once, expressed
 as one or more executable validation tests, run against authorized targets on a
 schedule or on demand, and the raw output of the underlying tool is turned into
@@ -21,17 +21,17 @@ that cannot say the first one is a scanner.
 
 | | |
 |---|---|
-| Project root | `/home/chintu/Valtros` |
+| Project root | `/home/chintu/controlforge` |
 | Backend | `backend/` — FastAPI, SQLAlchemy 2.0 (sync) + psycopg3, Alembic |
 | Frontend | `frontend/` — Vite + React + TypeScript + Tailwind v4 |
 | Built UI | `frontend/dist/` — served directly by nginx |
 | Lab targets | `lab/` — deliberately vulnerable containers |
 | Deployment files | `deploy/` — nginx site, systemd units, sudoers drop-in, nftables ruleset |
 | Operations scripts | `scripts/` — DB bootstrap, seed, firewall sync, lab up/down |
-| Database | PostgreSQL 18 on `127.0.0.1:5432`, database `valtros` |
-| Evidence store | `/var/lib/valtros/evidence` (append-only, content-addressed) |
-| Application logs | `/var/log/valtros/` and `journalctl -u valtros-*` |
-| Secrets | `/etc/valtros/valtros.env`, mode `0640 root:valtros` |
+| Database | PostgreSQL 18 on `127.0.0.1:5432`, database `controlforge` |
+| Evidence store | `/var/lib/controlforge/evidence` (append-only, content-addressed) |
+| Application logs | `/var/log/controlforge/` and `journalctl -u controlforge-*` |
+| Secrets | `/etc/controlforge/controlforge.env`, mode `0640 root:controlforge` |
 
 ## URLs and ports
 
@@ -105,7 +105,7 @@ takes everything else as a flag or an environment variable:
 
 ```bash
 sudo ./provision.sh --no-lan --admin-user secops -y
-sudo SERVICE_USER=svc CONF_DIR=/opt/valtros/conf ./provision.sh
+sudo SERVICE_USER=svc CONF_DIR=/opt/controlforge/conf ./provision.sh
 sudo ./provision.sh --help          # every option, with defaults
 ```
 
@@ -145,9 +145,9 @@ nuclei-based tests report INCONCLUSIVE until it is present.
 
 | Unit | User | What it does |
 |---|---|---|
-| `valtros-api.service` | `valtros` | FastAPI on `127.0.0.1:8000` |
-| `valtros-worker.service` | `valtros` | claims runs from the queue and executes engines |
-| `valtros-fw-sync.service` + `.timer` | root (oneshot) | re-derives the worker egress allow-list every 15 s |
+| `controlforge-api.service` | `controlforge` | FastAPI on `127.0.0.1:8000` |
+| `controlforge-worker.service` | `controlforge` | claims runs from the queue and executes engines |
+| `controlforge-fw-sync.service` + `.timer` | root (oneshot) | re-derives the worker egress allow-list every 15 s |
 | `nginx.service` | root | static UI + `/api` reverse proxy |
 | `postgresql.service` | `postgres` | the database, loopback-only |
 
@@ -171,12 +171,12 @@ it is worth understanding before adding targets.
    hostnames, with the `Host` header and TLS SNI supplied explicitly. A hostname
    cannot re-resolve to something else inside the tool.
 3. **The kernel enforces the boundary, not the code.** An nftables table
-   (`inet valtros`) matches the worker's uid and default-denies egress
+   (`inet controlforge`) matches the worker's uid and default-denies egress
    except loopback and the currently-authorized `(ip, port)` pairs. The
    `fw-sync` timer re-derives it from the active scopes every 15 seconds, so a
    narrowed authorization reaches the kernel within one interval and a ruleset
    wiped by hand heals without intervention. Operators who need it applied
-   immediately can run `sudo systemctl start valtros-fw-sync.service`.
+   immediately can run `sudo systemctl start controlforge-fw-sync.service`.
 4. **Narrowing an authorization stops work in flight.** Deactivating a scope,
    removing an entry, or unlinking a target cancels the queued and running runs
    that were relying on it, at the moment the change is committed.
@@ -196,8 +196,8 @@ Every engine shipped in 0.1.0 is read-only: no run changes state on a target.
 ## Accounts and secrets
 
 One administrator account is created when the platform is first set up, with a
-generated password stored as `VALTROS_ADMIN_INITIAL_PASSWORD` in
-`/etc/valtros/valtros.env`, and it is required to change that password at first
+generated password stored as `CONTROLFORGE_ADMIN_INITIAL_PASSWORD` in
+`/etc/controlforge/controlforge.env`, and it is required to change that password at first
 sign-in.
 
 There is no self-service signup, and **0.1.0 has no user-management API or
@@ -208,13 +208,13 @@ not yet applied per route. Adding accounts today means inserting a row directly
 with a `hashlib.scrypt` hash matching `backend/app/core/security.py`; first-class
 user management is the first item under next priorities.
 
-Secrets live in `/etc/valtros/valtros.env` (`0640
-root:valtros`): the database URL, the session signing key, the evidence
+Secrets live in `/etc/controlforge/controlforge.env` (`0640
+root:controlforge`): the database URL, the session signing key, the evidence
 directory and the initial admin password. That file is never printed by any
-script and must never be committed. `VALTROS_ADMIN_INITIAL_PASSWORD` can be
+script and must never be committed. `CONTROLFORGE_ADMIN_INITIAL_PASSWORD` can be
 deleted from it once the administrator has signed in.
 
-To read the file you must either be root or a member of the `valtros`
+To read the file you must either be root or a member of the `controlforge`
 group; membership takes effect on next login.
 
 ## Tests
@@ -230,7 +230,7 @@ touch production data or the real append-only audit trail. The frontend step is
 `tsc -b && vite build`.
 
 To isolate a test run from another one working in the same tree, set
-`VALTROS_TEST_DB` to a different database name.
+`CONTROLFORGE_TEST_DB` to a different database name.
 
 The tests that exercise real engines against real services skip themselves when
 the lab is not running, so `./test.sh` passes either way — with the lab up you
@@ -240,8 +240,8 @@ unit and policy suites.
 ## Repository layout
 
 ```
-Valtros/
-├── provision.sh            prepares a bare host, then installs Valtros on it
+controlforge/
+├── provision.sh            prepares a bare host, then installs CONTROLFORGE on it
 ├── start.sh stop.sh restart.sh status.sh test.sh install.sh
 ├── backend/
 │   ├── alembic/            migrations
@@ -323,7 +323,7 @@ creates).
 - One pre-existing host issue is unrelated to this project:
   `/etc/sudoers.d/chintu` is mode `0644` where sudo wants `0440`. It is reported
   as a warning by `visudo -c`. Fixing it is a one-line `chmod`, but it is the
-  machine's own file rather than Valtros's, so it was left alone.
+  machine's own file rather than CONTROLFORGE's, so it was left alone.
 
 ## Next priorities
 

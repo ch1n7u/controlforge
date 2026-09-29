@@ -46,8 +46,8 @@ from app.runner.exec import run_command, tool_version
 # scrubbing is deliberate: a developer's personal nuclei config can carry proxy
 # settings and third-party provider keys, and a validation run must not inherit
 # either.
-DEFAULT_TEMPLATES_DIR = "/var/lib/valtros/nuclei-templates"
-TEMPLATES_ENV_VAR = "VALTROS_NUCLEI_TEMPLATES"
+DEFAULT_TEMPLATES_DIR = "/var/lib/controlforge/nuclei-templates"
+TEMPLATES_ENV_VAR = "CONTROLFORGE_NUCLEI_TEMPLATES"
 
 
 def templates_dir() -> Path:

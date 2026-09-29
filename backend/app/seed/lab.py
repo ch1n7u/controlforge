@@ -46,10 +46,10 @@ from app.models.registry import (
 from app.models.testing import ValidationRun, ValidationTest, ValidationTestVersion
 from app.queue import jobs
 
-logger = logging.getLogger("valtros.seed.lab")
+logger = logging.getLogger("controlforge.seed.lab")
 
 LAB_SCOPE_NAME = "lab-loopback"
-HOST_SCOPE_NAME = "valtros-host"
+HOST_SCOPE_NAME = "controlforge-host"
 
 # The ports the lab publishes on loopback. The scope says exactly this much and
 # no more: a target outside this list is refused before a packet is sent.
@@ -257,11 +257,11 @@ CONTROLS: tuple[dict[str, Any], ...] = (
         "description": "Credential stores, daemon configuration and service state "
         "directories are only as private as their mode bits; a world-readable secrets "
         "file is a credential leak waiting for a backup to copy it somewhere worse.",
-        "expected_state": "Password hashes, the sshd configuration, Valtros's own "
+        "expected_state": "Password hashes, the sshd configuration, CONTROLFORGE's own "
         "secrets file and its state directories are readable only by their intended "
         "users.",
-        "remediation": "Tighten the mode (`chmod 0640 /etc/valtros/"
-        "valtros.env`), confirm ownership still matches the service account, and "
+        "remediation": "Tighten the mode (`chmod 0640 /etc/controlforge/"
+        "controlforge.env`), confirm ownership still matches the service account, and "
         "if a wider mode is genuinely required, record the exception in the baseline "
         "rather than leaving the difference unexplained.",
         "refs": (
@@ -541,7 +541,7 @@ TESTS: tuple[dict[str, Any], ...] = (
         "severity": Severity.MEDIUM,
         "tags": ["lab", "host", "hardening"],
         "selector": {"tags": ["local"]},
-        "description": "Includes Valtros's own secrets file and state "
+        "description": "Includes CONTROLFORGE's own secrets file and state "
         "directories: the platform is subject to the same baseline it verifies.",
     },
     {
@@ -651,7 +651,7 @@ TARGETS: tuple[dict[str, Any], ...] = (
         "credentials only).",
     },
     {
-        "name": "valtros-host",
+        "name": "controlforge-host",
         "target_type": TargetType.LOCAL,
         "host": "127.0.0.1",
         "port": 0,
@@ -659,7 +659,7 @@ TARGETS: tuple[dict[str, Any], ...] = (
         "tags": ["lab", "local"],
         "criticality": Severity.HIGH,
         "owner": "platform team",
-        "notes": "The machine Valtros runs on, validated by the local baseline "
+        "notes": "The machine CONTROLFORGE runs on, validated by the local baseline "
         "engine, which opens no sockets at all.",
     },
 )
@@ -691,7 +691,7 @@ SCOPES: tuple[dict[str, Any], ...] = (
     },
     {
         "name": HOST_SCOPE_NAME,
-        "description": "The machine Valtros runs on. Registered so the local "
+        "description": "The machine CONTROLFORGE runs on. Registered so the local "
         "baseline has a scope to run under, with no network ports: every network "
         "engine pointed at this target is refused before it starts.",
         "is_lab": True,
@@ -704,7 +704,7 @@ SCOPES: tuple[dict[str, Any], ...] = (
                 "note": "local inspection only - no port is authorized",
             },
         ),
-        "targets": ("valtros-host",),
+        "targets": ("controlforge-host",),
     },
 )
 
@@ -1031,7 +1031,7 @@ def enqueue_suite(
 def main() -> None:
     from app.db import SessionLocal, engine
 
-    parser = argparse.ArgumentParser(description="Seed the Valtros lab catalog.")
+    parser = argparse.ArgumentParser(description="Seed the CONTROLFORGE lab catalog.")
     parser.add_argument(
         "--run",
         action="store_true",

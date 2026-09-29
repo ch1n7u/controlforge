@@ -1,4 +1,4 @@
-"""Entry point for the Valtros worker process.
+"""Entry point for the CONTROLFORGE worker process.
 
 Runs until it is asked to stop. The loop is intentionally dull: take one run if
 there is one, reap expired leases on a timer, sleep briefly when there is
@@ -24,7 +24,7 @@ import time
 from app.config import get_settings
 from app.runner.worker import Worker
 
-logger = logging.getLogger("valtros.worker")
+logger = logging.getLogger("controlforge.worker")
 
 
 def _configure_logging(level: str) -> None:
@@ -36,7 +36,7 @@ def _configure_logging(level: str) -> None:
 
 
 def main() -> int:
-    _configure_logging(os.environ.get("VALTROS_LOG_LEVEL", "INFO"))
+    _configure_logging(os.environ.get("CONTROLFORGE_LOG_LEVEL", "INFO"))
     settings = get_settings()
     stop = threading.Event()
 

@@ -1,6 +1,6 @@
 """Pytest fixtures.
 
-Tests run against a dedicated ``valtros_test`` database, with evidence and
+Tests run against a dedicated ``controlforge_test`` database, with evidence and
 audit output redirected to a temporary directory, so a test run can never touch
 production data or the real append-only audit trail.
 """
@@ -27,15 +27,15 @@ _url = make_url(_base.db_url)
 _test_database = _url.database if _url.database.endswith("_test") else f"{_url.database}_test"
 # Lets a second test run (an agent working on another part of the tree, say) use
 # its own database instead of deadlocking with this one over TRUNCATE.
-if override := os.environ.get("VALTROS_TEST_DB"):
+if override := os.environ.get("CONTROLFORGE_TEST_DB"):
     _test_database = override
 TEST_DB_URL = _url.set(database=_test_database).render_as_string(hide_password=False)
-_TMP = Path(tempfile.mkdtemp(prefix="valtros-tests-"))
+_TMP = Path(tempfile.mkdtemp(prefix="controlforge-tests-"))
 
-os.environ["VALTROS_DB_URL"] = TEST_DB_URL
-os.environ["VALTROS_AUDIT_JSONL_PATH"] = str(_TMP / "audit.jsonl")
-os.environ["VALTROS_EVIDENCE_DIR"] = str(_TMP / "evidence")
-os.environ.setdefault("VALTROS_SECRET_KEY", _base.secret_key)
+os.environ["CONTROLFORGE_DB_URL"] = TEST_DB_URL
+os.environ["CONTROLFORGE_AUDIT_JSONL_PATH"] = str(_TMP / "audit.jsonl")
+os.environ["CONTROLFORGE_EVIDENCE_DIR"] = str(_TMP / "evidence")
+os.environ.setdefault("CONTROLFORGE_SECRET_KEY", _base.secret_key)
 get_settings.cache_clear()
 
 from alembic import command  # noqa: E402
@@ -168,6 +168,6 @@ def admin_client(client, admin_user) -> TestClient:
 def settings_paths() -> dict[str, str]:
     """Where this test run redirects evidence and the audit mirror."""
     return {
-        "evidence_dir": os.environ["VALTROS_EVIDENCE_DIR"],
-        "audit_jsonl_path": os.environ["VALTROS_AUDIT_JSONL_PATH"],
+        "evidence_dir": os.environ["CONTROLFORGE_EVIDENCE_DIR"],
+        "audit_jsonl_path": os.environ["CONTROLFORGE_AUDIT_JSONL_PATH"],
     }

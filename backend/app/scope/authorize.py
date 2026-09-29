@@ -42,7 +42,7 @@ from app.scope.ranges import (
     parse_address,
 )
 
-logger = logging.getLogger("valtros.scope")
+logger = logging.getLogger("controlforge.scope")
 
 ResolvedAddress = IPv4Address | IPv6Address
 

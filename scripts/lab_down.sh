@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Stop and remove the Valtros test lab containers. Named volumes are kept
+# Stop and remove the CONTROLFORGE test lab containers. Named volumes are kept
 # (no -v), so lab state survives; the network is recreated on the next up.
 set -euo pipefail
 

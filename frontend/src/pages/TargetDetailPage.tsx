@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { RunDialog } from '../components/RunDialog'
@@ -13,6 +13,7 @@ import {
   PageHeader,
   Panel,
   RunStatusBadge,
+  Select,
   SeverityBadge,
   TableEmptyRow,
   TableWrap,
@@ -22,14 +23,16 @@ import {
 import { useAuth } from '../auth/context'
 import { api, asPage, qk } from '../lib/api'
 import { fmtDate, fmtDateTime, fmtRelative } from '../lib/format'
-import { expiryState } from '../lib/scopeGovernance'
-import type { RunSummary } from '../lib/types'
+import { authorizationSuffix, expiryState } from '../lib/scopeGovernance'
+import type { RunSummary, Scope } from '../lib/types'
 
 export function TargetDetailPage() {
   const params = useParams()
   const targetId = Number(params.id)
-  const { isWriter } = useAuth()
+  const queryClient = useQueryClient()
+  const { isWriter, isAdmin } = useAuth()
   const [runOpen, setRunOpen] = useState(false)
+  const [attachScopeId, setAttachScopeId] = useState('')
 
   const target = useQuery({
     queryKey: qk.target(targetId),
@@ -47,6 +50,36 @@ export function TargetDetailPage() {
     staleTime: 10_000,
     retry: false,
   })
+  const scopeCatalog = useQuery({
+    queryKey: qk.scopes(),
+    queryFn: () => api.scopes(),
+    enabled: isAdmin,
+    staleTime: 60_000,
+  })
+
+  const attach = useMutation({
+    mutationFn: (scopeId: number) => api.linkTargetScope(targetId, scopeId),
+    onSuccess: () => {
+      setAttachScopeId('')
+      void queryClient.invalidateQueries({ queryKey: qk.targetScopes(targetId) })
+    },
+  })
+
+  const detach = useMutation({
+    mutationFn: (scopeId: number) => api.unlinkTargetScope(targetId, scopeId),
+    onSuccess: () => {
+      // Detaching cancels the queued and running runs it was authorizing.
+      void queryClient.invalidateQueries({ queryKey: qk.targetScopes(targetId) })
+      void queryClient.invalidateQueries({ queryKey: qk.runs({ target_id: targetId }) })
+    },
+  })
+
+  function onDetach(scope: Scope): void {
+    const confirmed = window.confirm(
+      `Detach scope "${scope.name}"? Queued and running runs it was authorizing are cancelled.`,
+    )
+    if (confirmed) detach.mutate(scope.id)
+  }
 
   if (target.isPending) return <Loading label="Loading target" />
   if (target.isError) return <ErrorNotice error={target.error} onRetry={() => void target.refetch()} />
@@ -58,6 +91,9 @@ export function TargetDetailPage() {
   const authorized = attachedScopes.some(
     (scope) => scope.active && expiryState(scope) !== 'expired',
   )
+  const catalog = scopeCatalog.data ?? []
+  const attachedIds = new Set(attachedScopes.map((scope) => scope.id))
+  const attachableScopes = catalog.filter((scope) => !attachedIds.has(scope.id))
 
   return (
     <div className="space-y-4">
@@ -123,14 +159,18 @@ export function TargetDetailPage() {
         <Panel title={`Scopes attached (${attachedScopes.length})`}>
           {scopes.isPending && <Loading label="Loading scopes" />}
           {scopes.isError && <ErrorNotice error={scopes.error} onRetry={() => void scopes.refetch()} />}
-          {scopes.data &&
-            (attachedScopes.length === 0 ? (
-              <EmptyState
-                title="No scope authorizes this target"
-                hint="Ask an administrator to attach it to a scope; runs stay disabled until one is attached."
-              />
-            ) : (
-              <>
+          {scopes.data && (
+            <>
+              {attachedScopes.length === 0 ? (
+                <EmptyState
+                  title="No scope authorizes this target"
+                  hint={
+                    isAdmin
+                      ? 'Attach an existing scope below to authorize runs against this target.'
+                      : 'Ask an administrator to attach it to a scope; runs stay disabled until one is attached.'
+                  }
+                />
+              ) : (
                 <ul className="space-y-2">
                   {attachedScopes.map((scope) => {
                     const expired = expiryState(scope) === 'expired'
@@ -157,6 +197,16 @@ export function TargetDetailPage() {
                                 broad
                               </Badge>
                             )}
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                disabled={detach.isPending}
+                                onClick={() => onDetach(scope)}
+                              >
+                                Detach
+                              </Button>
+                            )}
                           </span>
                         </div>
                         <div className="mt-1 font-mono text-[11px] text-dim">
@@ -167,11 +217,68 @@ export function TargetDetailPage() {
                     )
                   })}
                 </ul>
-                <div className="mt-3 border-t border-edge pt-2 text-[12px] text-dim">
-                  A scope authorizes a run only while it is active and unexpired.
+              )}
+
+              {detach.isError && (
+                <div className="mt-3">
+                  <ErrorNotice title="Detach failed" error={detach.error} />
                 </div>
-              </>
-            ))}
+              )}
+
+              {isAdmin && (
+                <div className="mt-3 border-t border-edge pt-3">
+                  <div className="mb-1 text-[11px] tracking-wide text-mute uppercase">
+                    Attach a scope
+                  </div>
+                  {scopeCatalog.isPending ? (
+                    <div className="text-[12px] text-dim">Loading scopes...</div>
+                  ) : scopeCatalog.isError ? (
+                    <ErrorNotice error={scopeCatalog.error} onRetry={() => void scopeCatalog.refetch()} />
+                  ) : attachableScopes.length === 0 ? (
+                    <p className="text-[12px] text-dim">
+                      {catalog.length === 0
+                        ? 'No scopes exist yet. A scope defines what a run is allowed to reach; in 0.1.0 scopes are created through the API.'
+                        : 'Every scope is already attached to this target.'}
+                    </p>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={attachScopeId}
+                        onChange={(e) => setAttachScopeId(e.target.value)}
+                        className="flex-1"
+                      >
+                        <option value="">Select a scope...</option>
+                        {attachableScopes.map((scope) => (
+                          <option key={scope.id} value={scope.id}>
+                            {scope.name}
+                            {authorizationSuffix(scope)}
+                          </option>
+                        ))}
+                      </Select>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        disabled={attachScopeId === '' || attach.isPending}
+                        onClick={() => attach.mutate(Number(attachScopeId))}
+                      >
+                        {attach.isPending ? 'Attaching...' : 'Attach'}
+                      </Button>
+                    </div>
+                  )}
+                  {attach.isError && (
+                    <div className="mt-2">
+                      <ErrorNotice title="Attach failed" error={attach.error} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-3 border-t border-edge pt-2 text-[12px] text-dim">
+                A scope authorizes a run only while it is active and unexpired. The worker's
+                firewall allow-list converges within about 15 seconds of a change.
+              </div>
+            </>
+          )}
         </Panel>
       </div>
 

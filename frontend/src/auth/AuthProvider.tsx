@@ -92,12 +92,12 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return (
       <div className="mx-auto max-w-xl p-8">
         <ErrorNotice
-          title="Cannot reach Valtros"
+          title="Cannot reach CONTROLFORGE"
           error={error}
           onRetry={() => window.location.reload()}
         />
         <p className="mt-3 text-[12px] text-dim">
-          Your session could not be confirmed. Check that the Valtros server is running,
+          Your session could not be confirmed. Check that the CONTROLFORGE server is running,
           then reload.
         </p>
       </div>

@@ -122,7 +122,7 @@ export function SettingsPage() {
 
         <Panel title="This install" className="lg:col-span-2">
           <p className="text-[12px] text-mute">
-            Valtros runs entirely on this host. Runs, evidence and findings stay here, and the
+            CONTROLFORGE runs entirely on this host. Runs, evidence and findings stay here, and the
             only traffic that leaves is what a run sends to the targets you authorize.
           </p>
           <div className="mt-3">

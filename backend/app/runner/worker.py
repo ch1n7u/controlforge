@@ -56,7 +56,7 @@ from app.queue import jobs
 from app.scope.authorize import authorize
 from app.scope.load import ScopeLoadError, active_rules_for_target
 
-logger = logging.getLogger("valtros.worker")
+logger = logging.getLogger("controlforge.worker")
 
 # Tool output can be chatty; batching keeps the run log from costing one
 # transaction per line while still showing progress during a long scan.

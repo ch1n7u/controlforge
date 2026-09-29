@@ -1,9 +1,9 @@
-# Valtros: the service account may refresh the worker egress allow-list.
+# CONTROLFORGE: the service account may refresh the worker egress allow-list.
 #
 # Template. Rendered by @REPO_DIR@/install.sh and installed to
-# /etc/sudoers.d/valtros (mode 0440, root:root) after `visudo -c` accepts it.
+# /etc/sudoers.d/controlforge (mode 0440, root:root) after `visudo -c` accepts it.
 #
 # Exactly one command, with exact arguments. sudo matches the full argv
 # literally, so any variation - another unit, another verb, extra flags - is
 # refused; there are no wildcards and the target user is pinned to root.
-@SERVICE_USER@ ALL=(root) NOPASSWD: /usr/bin/systemctl start valtros-fw-sync.service
+@SERVICE_USER@ ALL=(root) NOPASSWD: /usr/bin/systemctl start controlforge-fw-sync.service

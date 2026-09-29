@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Valtros lab target: lab-api (deliberately vulnerable, stdlib only).
+"""CONTROLFORGE lab target: lab-api (deliberately vulnerable, stdlib only).
 
 Deliberate weaknesses:
   * GET /api/v1/users         - full user list with no authentication
@@ -51,7 +51,7 @@ FAKE_ADMIN_CONFIG = {
 
 INDEX = {
     "service": "lab-api",
-    "note": "Valtros deliberately vulnerable API target",
+    "note": "CONTROLFORGE deliberately vulnerable API target",
     "endpoints": [
         "GET /health",
         "GET /api/v1/users",
