@@ -23,7 +23,7 @@ that cannot say the first one is a scanner.
 |---|---|
 | Project root | `/home/chintu/controlforge` |
 | Backend | `backend/` — FastAPI, SQLAlchemy 2.0 (sync) + psycopg3, Alembic |
-| Frontend | `frontend/` — Vite + React + TypeScript + Tailwind v4 |
+| Frontend | `frontend/` — Vite + React + TypeScript + Tailwind v4 (see `frontend/README.md`) |
 | Built UI | `frontend/dist/` — served directly by nginx |
 | Lab targets | `lab/` — deliberately vulnerable containers |
 | Deployment files | `deploy/` — nginx site, systemd units, sudoers drop-in, nftables ruleset |
@@ -56,6 +56,28 @@ Lab targets (only present when the lab is up, all loopback-only):
 | `8083` | small web app | security-header and cookie-flag failures |
 | `2222` | SSH | weak configuration |
 | `8084` | OWASP Juice Shop | a realistic vulnerable application |
+
+## The web UI
+
+Everything is drivable from the interface, and each action sits on the page it
+belongs to:
+
+- **Overview** — assertion outcomes, control coverage and the findings waiting
+  for triage.
+- **Runs** — start one from a test or a target and watch its log stream live;
+  the facts and assertion results it produced stay on the run's page.
+- **Findings** — triage (status, severity, assignment, notes) and retest a
+  remediated finding to close it out.
+- **Evidence** — the captured artifacts, with the recorded SHA-256 checked when
+  a file is downloaded.
+- **Configuration** — controls with their framework references, frameworks,
+  tests and their versions, targets, and the scopes that authorize runs. All of
+  it is editable in place; nothing here needs the API by hand.
+- **Administration** — the audit log, user accounts, and run safety (kill
+  switch, safe mode, the global concurrency cap).
+
+The interface is a client of the same API documented at `/api/docs`, not a
+second implementation.
 
 ## Start, stop, restart, test
 
@@ -154,6 +176,19 @@ nuclei-based tests report INCONCLUSIVE until it is present.
 All are enabled at boot, as is nginx — a reboot brings the platform back without
 anyone logging in.
 
+## Validation engines
+
+Six engines ship in 0.1.0:
+
+| Engine | What it observes |
+|---|---|
+| `nmap` | TCP connect scan over the authorized ports, with optional service and version detection |
+| `tls_config` | protocol versions, ciphers, certificate posture and protocol-level vulnerabilities, via testssl.sh |
+| `http_headers` | the response line, every response header and every cookie flag |
+| `http_exposure` | a curated list of well-known sensitive paths, reported only when the body matches that path's signature |
+| `nuclei` | template matches, restricted to non-intrusive HTTP template classes |
+| `local_baseline` | this host's sysctls, file modes and sshd settings (target type `local`; touches no network) |
+
 ## How the safety model works
 
 This is the part that makes the tool safe to point at real infrastructure, and
@@ -200,13 +235,25 @@ generated password stored as `CONTROLFORGE_ADMIN_INITIAL_PASSWORD` in
 `/etc/controlforge/controlforge.env`, and it is required to change that password at first
 sign-in.
 
-There is no self-service signup, and **0.1.0 has no user-management API or
-screen**, so no further accounts can be created through the product yet. An
-account row carries a role of `admin`, `analyst` or `viewer`, and the
-administrator-only routes are enforced, but the analyst/viewer distinction is
-not yet applied per route. Adding accounts today means inserting a row directly
-with a `hashlib.scrypt` hash matching `backend/app/core/security.py`; first-class
-user management is the first item under next priorities.
+Every other account is made by an administrator on the **Users** screen: an
+account is created with a role and an initial password (which it must change at
+first sign-in), and it can be renamed, re-roled, deactivated or reactivated, or
+given a new password — setting one revokes every session that account has open.
+Accounts are deactivated rather than deleted, so the audit trail keeps naming a
+real person, and an administrator cannot demote or deactivate themselves, so
+the platform can never be left without one. There is no self-service signup.
+
+Three roles, enforced per route rather than merely recorded:
+
+- **viewer** — read-only.
+- **analyst** — the validation work: create and edit targets, controls,
+  frameworks and tests, start and cancel runs, triage findings, and retest.
+- **admin** — everything an analyst may do, plus accounts, scopes and settings,
+  and the deletes reserved to an administrator: targets, controls and
+  frameworks.
+
+Passwords are 12 characters or more and must mix upper case, lower case and a
+digit.
 
 Secrets live in `/etc/controlforge/controlforge.env` (`0640
 root:controlforge`): the database URL, the session signing key, the evidence
@@ -299,10 +346,10 @@ creates).
   TCP connect scans. No SYN scanning, no masscan, no packet crafting.
 - **Session authentication only.** There are no API tokens yet, so automation
   must drive the API with a session cookie.
-- **No user management.** 0.1.0 ships a single administrator account. There is no
-  way to create or edit accounts through the product, and while accounts carry
-  an `admin`/`analyst`/`viewer` role, only the administrator-only routes are
-  enforced — the analyst/viewer distinction is modelled but not yet applied.
+- **Account management is deliberately small.** Administrators create, edit and
+  deactivate accounts, but never delete them (the audit trail has to keep
+  pointing at a real person), and there is no self-service signup or
+  email-based password reset.
 - **Single node.** No high availability, no clustering, no distributed workers.
 - **Tool data is local.** Nuclei needs its local templates, and testssl.sh its
   local data bundle; neither auto-updates, which is deliberate for reproducibility
@@ -327,15 +374,13 @@ creates).
 
 ## Next priorities
 
-1. User management: creating, editing and deactivating accounts, and applying
-   the `analyst`/`viewer` distinction per route. This is the largest functional
-   gap in 0.1.0 — the product currently has exactly one account.
-2. API tokens for automation, so scheduled revalidation does not depend on a
+1. API tokens for automation, so scheduled revalidation does not depend on a
    browser session.
-3. A configuration-baseline engine (file checksums and modes) built on the same
-   facts-and-assertions model.
-4. More engines underneath the same model: OWASP ZAP, Trivy, Semgrep.
-5. Scheduled and continuous revalidation with drift detection.
-6. SLA and due-date tracking on findings, building on the remediation workflow.
-7. Compliance report export (PDF/CSV) from the posture data.
-8. An optional AI reporting plugin — explicitly outside the critical path.
+2. File checksums in the local-baseline engine. Modes, sysctls and sshd settings
+   are covered; file contents are not hashed yet, so a rewritten file that
+   keeps its mode is not detectable.
+3. More engines underneath the same model: OWASP ZAP, Trivy, Semgrep.
+4. Scheduled and continuous revalidation with drift detection.
+5. SLA and due-date tracking on findings, building on the remediation workflow.
+6. Compliance report export (PDF/CSV) from the posture data.
+7. An optional AI reporting plugin — explicitly outside the critical path.

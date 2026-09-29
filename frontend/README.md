@@ -73,14 +73,16 @@ Routes, all under the authenticated layout except `/login`:
 | Path | Page |
 |---|---|
 | `/overview` | posture dashboard: assertion outcomes, control coverage, findings awaiting triage (landing route) |
-| `/controls`, `/controls/:id` | controls and their validation tests |
-| `/targets`, `/targets/:id` | targets, resolved addresses, scope linkage |
-| `/scopes`, `/scopes/:id` | authorization scopes, entries, expiry, governance warnings |
+| `/controls`, `/controls/new`, `/controls/:id` | controls, their framework references and their validation tests |
+| `/frameworks` | the framework catalogues controls map into (key, name, version, source, enabled) |
+| `/targets`, `/targets/new`, `/targets/:id` | targets, resolved addresses, scope linkage |
+| `/scopes`, `/scopes/new`, `/scopes/:id` | authorization scopes, entries, expiry, governance warnings |
 | `/tests`, `/tests/new`, `/tests/:id` | validation tests, versions, assertions |
 | `/runs`, `/runs/:id` | executions, live log, facts and assertion results |
 | `/findings`, `/findings/:id` | findings, remediation and retest |
 | `/evidence`, `/evidence/:id` | artifacts, hashes and verification |
 | `/audit` | append-only audit trail, filterable by actor, action and entity |
+| `/users` | accounts, roles and password resets (administrator) |
 | `/settings` | run limits, run safety, result freshness and install health; every edit is recorded in the audit log |
 
 ## Conventions
