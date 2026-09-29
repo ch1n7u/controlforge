@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   Badge,
   Button,
+  Checkbox,
   ErrorNotice,
   Field,
   Input,
@@ -15,13 +16,14 @@ import {
   TableEmptyRow,
   TableWrap,
   Td,
+  Textarea,
   Th,
 } from '../components/ui'
 import { useAuth } from '../auth/context'
 import { api, qk } from '../lib/api'
 import { daysUntil, fmtDateTime, fmtRelative } from '../lib/format'
 import { expiryState, governanceProblems } from '../lib/scopeGovernance'
-import type { ScopeEntry, ScopeEntryCreate, ScopeEntryKind } from '../lib/types'
+import type { Scope, ScopeEntry, ScopeEntryCreate, ScopeEntryKind, ScopeUpdate } from '../lib/types'
 
 export function ScopeDetailPage() {
   const params = useParams()
@@ -40,6 +42,7 @@ export function ScopeDetailPage() {
   const userById = new Map((users.data ?? []).map((user) => [user.id, user]))
 
   const { isAdmin } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const [entryKind, setEntryKind] = useState<ScopeEntryKind>('cidr')
@@ -66,6 +69,22 @@ export function ScopeDetailPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: qk.scope(scopeId) })
       void queryClient.invalidateQueries({ queryKey: qk.scopes() })
+    },
+  })
+
+  const updateScope = useMutation({
+    mutationFn: (payload: ScopeUpdate) => api.updateScope(scopeId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.scope(scopeId) })
+      void queryClient.invalidateQueries({ queryKey: qk.scopes() })
+    },
+  })
+
+  const removeScope = useMutation({
+    mutationFn: () => api.deleteScope(scopeId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.scopes() })
+      navigate('/scopes')
     },
   })
 
@@ -136,17 +155,17 @@ export function ScopeDetailPage() {
       {expiry === 'expired' && (
         <div className="border border-fail/50 bg-fail/10 p-3 text-[13px] text-ink">
           <span className="font-mono text-[12px] font-semibold text-fail">EXPIRED - </span>
-          this scope expired {fmtRelative(s.expires_at)} ({fmtDateTime(s.expires_at)}) and
-          authorizes nothing until an administrator renews it. Targets that rely on it cannot be
-          validated.
+          {isAdmin
+            ? `this scope expired ${fmtRelative(s.expires_at)} (${fmtDateTime(s.expires_at)}) and authorizes nothing - renew it with the edit panel below. Targets that rely on it cannot be validated.`
+            : `this scope expired ${fmtRelative(s.expires_at)} (${fmtDateTime(s.expires_at)}) and authorizes nothing until an administrator renews it. Targets that rely on it cannot be validated.`}
         </div>
       )}
       {expiry === 'soon' && (
         <div className="border border-incon/50 bg-incon/10 p-3 text-[13px] text-ink">
           <span className="font-mono text-[12px] font-semibold text-incon">EXPIRING - </span>
-          this scope expires in {daysToExpiry} {daysToExpiry === 1 ? 'day' : 'days'} (
-          {fmtDateTime(s.expires_at)}). Renew it before then, or runs against its targets will be
-          refused.
+          {isAdmin
+            ? `this scope expires in ${daysToExpiry} ${daysToExpiry === 1 ? 'day' : 'days'} (${fmtDateTime(s.expires_at)}) - extend it now with the edit panel below, or runs against its targets will be refused.`
+            : `this scope expires in ${daysToExpiry} ${daysToExpiry === 1 ? 'day' : 'days'} (${fmtDateTime(s.expires_at)}). Renew it before then, or runs against its targets will be refused.`}
         </div>
       )}
       {s.allow_broad && (
@@ -320,6 +339,249 @@ export function ScopeDetailPage() {
           )}
         </Panel>
       )}
+
+      {isAdmin && (
+        <EditScopeForm
+          key={scopeFormKey(s)}
+          scope={s}
+          saving={updateScope.isPending}
+          isError={updateScope.isError}
+          error={updateScope.error}
+          isSuccess={updateScope.isSuccess}
+          onSubmit={(payload) => updateScope.mutate(payload)}
+        />
+      )}
+
+      {isAdmin && (
+        <Panel title="Delete scope">
+          <p className="text-[13px] text-mute">
+            Deleting this scope removes it and its entries, detaches every target that relies on
+            it, and cancels the queued and running runs it authorizes. Targets keep existing; they
+            just stop being authorized. The authorization record stays in the audit log.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[12px] text-dim">
+              Runs against the targets this scope covered will be refused until another scope
+              authorizes them.
+            </span>
+            <Button
+              variant="danger"
+              disabled={removeScope.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Delete scope "${s.name}"? Queued and running runs it authorizes are cancelled. This cannot be undone.`,
+                  )
+                ) {
+                  removeScope.mutate()
+                }
+              }}
+            >
+              {removeScope.isPending ? 'Deleting...' : 'Delete scope'}
+            </Button>
+          </div>
+          {removeScope.isError && (
+            <div className="mt-3">
+              <ErrorNotice title="Delete scope failed" error={removeScope.error} />
+            </div>
+          )}
+        </Panel>
+      )}
     </div>
+  )
+}
+
+/**
+ * Scopes carry no updated_at, so the stored field values stand in for one: the
+ * form remounts, re-reading the saved values, whenever they change.
+ */
+function scopeFormKey(scope: Scope): string {
+  return [
+    scope.name,
+    scope.description ?? '',
+    scope.authorization_ref ?? '',
+    scope.expires_at ?? '',
+    scope.active,
+    scope.allow_broad,
+    scope.is_lab,
+  ].join('|')
+}
+
+/** A Date as the local "YYYY-MM-DDTHH:mm" a datetime-local input expects. */
+function localDateTimeValue(date: Date): string {
+  const pad = (value: number): string => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function EditScopeForm({
+  scope,
+  saving,
+  isError,
+  error,
+  isSuccess,
+  onSubmit,
+}: {
+  scope: Scope
+  saving: boolean
+  isError: boolean
+  error: unknown
+  isSuccess: boolean
+  onSubmit: (payload: ScopeUpdate) => void
+}) {
+  const [name, setName] = useState(scope.name)
+  const [description, setDescription] = useState(scope.description ?? '')
+  const [authorizationRef, setAuthorizationRef] = useState(scope.authorization_ref ?? '')
+  const [expiresAt, setExpiresAt] = useState(() =>
+    scope.expires_at === null ? '' : localDateTimeValue(new Date(scope.expires_at)),
+  )
+  const [allowBroad, setAllowBroad] = useState(scope.allow_broad)
+  const [isLab, setIsLab] = useState(scope.is_lab)
+  const [active, setActive] = useState(scope.active)
+  const [localError, setLocalError] = useState<string | null>(null)
+
+  function renewByDays(days: number): void {
+    const next = new Date()
+    next.setDate(next.getDate() + days)
+    setExpiresAt(localDateTimeValue(next))
+  }
+
+  function renewByYear(): void {
+    const next = new Date()
+    next.setFullYear(next.getFullYear() + 1)
+    setExpiresAt(localDateTimeValue(next))
+  }
+
+  function submit(): void {
+    const trimmedName = name.trim()
+    if (trimmedName === '') {
+      setLocalError('Enter a name for this scope.')
+      return
+    }
+    let isoExpiry: string | null = null
+    if (expiresAt !== '') {
+      const parsed = new Date(expiresAt)
+      if (Number.isNaN(parsed.getTime())) {
+        setLocalError('The expiry is not a valid date and time.')
+        return
+      }
+      isoExpiry = parsed.toISOString()
+    }
+    setLocalError(null)
+    onSubmit({
+      name: trimmedName,
+      description: description.trim() === '' ? null : description.trim(),
+      authorization_ref: authorizationRef.trim() === '' ? null : authorizationRef.trim(),
+      allow_broad: allowBroad,
+      is_lab: isLab,
+      active,
+      expires_at: isoExpiry,
+    })
+  }
+
+  return (
+    <Panel title="Edit scope">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field
+          label="Name"
+          required
+          hint="How this authorization is referenced in the UI and the audit log."
+        >
+          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={160} />
+        </Field>
+        <Field
+          label="Authorization reference"
+          hint="The ticket or document that authorizes testing these addresses. Required before public ranges can be added; leave empty to remove it."
+        >
+          <Input
+            value={authorizationRef}
+            onChange={(e) => setAuthorizationRef(e.target.value)}
+            placeholder="ENG-4821"
+            maxLength={255}
+          />
+        </Field>
+      </div>
+      <div className="mt-3">
+        <Field label="Description" hint="Leave empty to remove the description.">
+          <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </Field>
+      </div>
+      <div className="mt-3">
+        <Field
+          label="Expiry"
+          hint="Optional. Once it passes, the scope authorizes nothing and runs against its targets are refused. Leave empty for no expiry."
+        >
+          <Input
+            type="datetime-local"
+            className="w-60"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+          />
+        </Field>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => renewByDays(30)}>
+            +30 days
+          </Button>
+          <Button size="sm" onClick={() => renewByDays(90)}>
+            +90 days
+          </Button>
+          <Button size="sm" onClick={renewByYear}>
+            +1 year
+          </Button>
+          <Button size="sm" disabled={expiresAt === ''} onClick={() => setExpiresAt('')}>
+            Clear expiry
+          </Button>
+          <span className="text-[12px] text-dim">
+            Renewing counts from today; nothing is stored until you save.
+          </span>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <Checkbox label="Active" checked={active} onChange={setActive} />
+          <p className="mt-1 text-[12px] text-dim">
+            An inactive scope authorizes nothing: runs against its targets are refused until it is
+            re-activated.
+          </p>
+        </div>
+        <div>
+          <Checkbox label="Broad ranges allowed" checked={allowBroad} onChange={setAllowBroad} />
+          <p className="mt-1 text-[12px] text-dim">
+            Permits ranges such as 10.0.0.0/8 or 0.0.0.0/0. Runs stay limited to the entries
+            below, but a broad range widens the blast radius of a mistake.
+          </p>
+        </div>
+        <div>
+          <Checkbox label="Lab scope" checked={isLab} onChange={setIsLab} />
+          <p className="mt-1 text-[12px] text-dim">
+            A lab scope may authorize loopback and other internal ranges that are otherwise
+            refused.
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[12px] text-dim">
+          Saving re-checks every entry against these flags: a change that invalidates an entry is
+          refused, and queued and running runs this scope authorizes are cancelled.
+        </span>
+        <Button variant="primary" disabled={saving} onClick={submit}>
+          {saving ? 'Saving...' : 'Save scope'}
+        </Button>
+      </div>
+      {localError !== null && (
+        <div className="mt-3">
+          <ErrorNotice error={new Error(localError)} />
+        </div>
+      )}
+      {isError && (
+        <div className="mt-3">
+          <ErrorNotice title="Save scope failed" error={error} />
+        </div>
+      )}
+      {isSuccess && (
+        <div className="mt-3 border border-pass/40 bg-pass/5 p-2 text-[12px] text-pass">
+          Scope saved.
+        </div>
+      )}
+    </Panel>
   )
 }

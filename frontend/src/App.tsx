@@ -22,6 +22,7 @@ import { TargetDetailPage } from './pages/TargetDetailPage'
 import { TargetsPage } from './pages/TargetsPage'
 import { TestDetailPage } from './pages/TestDetailPage'
 import { TestsPage } from './pages/TestsPage'
+import { UsersPage } from './pages/UsersPage'
 
 export default function App() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="evidence" element={<EvidencePage />} />
             <Route path="evidence/:id" element={<EvidenceDetailPage />} />
             <Route path="audit" element={<AuditPage />} />
+            <Route path="users" element={<UsersPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/overview" replace />} />
           </Route>

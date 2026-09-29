@@ -61,6 +61,20 @@ export interface MeResponse {
   csrf_token: string
 }
 
+export interface UserCreate {
+  username: string
+  full_name?: string
+  role: Role
+  password: string
+}
+
+export interface UserUpdate {
+  full_name?: string | null
+  role?: Role
+  is_active?: boolean
+  password?: string
+}
+
 // ------------------------------------------------------------- registry ----
 
 export interface Framework {
@@ -166,6 +180,16 @@ export interface ScopeCreate {
   is_lab?: boolean
   expires_at?: string
   entries: ScopeEntryCreate[]
+}
+
+export interface ScopeUpdate {
+  name?: string
+  description?: string | null
+  authorization_ref?: string | null
+  allow_broad?: boolean
+  is_lab?: boolean
+  active?: boolean
+  expires_at?: string | null
 }
 
 // -------------------------------------------------------------- engines ----

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as OrmSession
 
 from app.api.deps import (
@@ -11,6 +12,7 @@ from app.api.deps import (
     check_csrf,
     client_ip,
     get_auth_context,
+    require_admin,
     require_user,
     require_user_csrf,
 )
@@ -18,12 +20,15 @@ from app.config import get_settings
 from app.core import audit, sessions
 from app.db import get_db
 from app.models.auth import User
+from app.models.enums import Role
 from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     LoginResponse,
     MeResponse,
+    UserCreateRequest,
     UserOut,
+    UserUpdateRequest,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -45,6 +50,13 @@ def _set_session_cookie(response: Response, token: str) -> None:
 def _clear_session_cookie(response: Response) -> None:
     settings = get_settings()
     response.delete_cookie(key=settings.cookie_name, path="/")
+
+
+def _policy_error(problems: list[str]) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="password does not meet policy: " + "; ".join(problems),
+    )
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -143,10 +155,7 @@ def change_password(
 
     problems = sessions.set_password(db, user, payload.new_password)
     if problems:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="password does not meet policy: " + "; ".join(problems),
-        )
+        raise _policy_error(problems)
 
     # A password change invalidates every other session for that user.
     sessions.revoke_all_for_user(db, user.id)
@@ -163,10 +172,11 @@ def change_password(
     return {"status": "ok", "sessions_revoked": True}
 
 
-# A read-only directory, separate from the auth routes: it exists so the UI can
+# The user directory: any authenticated session may read it, so the UI can
 # offer a real list of assignees instead of asking an operator to type a user
 # id. It deliberately exposes nothing beyond what a colleague already sees in
-# the audit log's actor column.
+# the audit log's actor column. The write side - creating accounts and editing
+# them - is administrator-only and CSRF-checked like every other state change.
 directory_router = APIRouter(prefix="/api", tags=["users"])
 
 
@@ -180,4 +190,137 @@ def list_users(
     if active_only:
         stmt = stmt.where(User.is_active.is_(True))
     return [UserOut.model_validate(row) for row in db.execute(stmt).scalars()]
+
+
+@directory_router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def create_user(
+    payload: UserCreateRequest,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: OrmSession = Depends(get_db),
+) -> User:
+    """Create an account. An administrator sets a temporary password; the new
+    user has to change it at first sign-in."""
+    user = User(
+        username=payload.username,
+        full_name=payload.full_name,
+        role=payload.role,
+        is_active=True,
+        must_change_password=True,
+    )
+    # The policy check runs before the row is added to the session, so a
+    # rejected password never leaves a half-built INSERT pending.
+    problems = sessions.set_password(db, user, payload.password)
+    if problems:
+        raise _policy_error(problems)
+    # set_password clears the flag it just set; an administrator-set password is
+    # temporary, so the prompt stays.
+    user.must_change_password = True
+
+    db.add(user)
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"a user with username {payload.username!r} already exists",
+        ) from exc
+
+    # The password itself is never part of the audit record.
+    audit.record(
+        db,
+        action="user.create",
+        actor=admin,
+        actor_ip=client_ip(request),
+        object_type="user",
+        object_id=user.id,
+        after={
+            "username": user.username,
+            "full_name": user.full_name,
+            "role": user.role,
+            "is_active": user.is_active,
+            "must_change_password": user.must_change_password,
+        },
+    )
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@directory_router.patch("/users/{user_id}", response_model=UserOut)
+def update_user(
+    user_id: int,
+    payload: UserUpdateRequest,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: OrmSession = Depends(get_db),
+) -> User:
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user {user_id} not found")
+
+    changes = payload.model_dump(exclude_unset=True)
+    # The password goes through set_password below and must never appear in the
+    # audit diff.
+    new_password = changes.pop("password", None)
+    # full_name may be an explicit null (clearing it); role and is_active are
+    # non-nullable, so an explicit null there just means "not supplied".
+    for field in ("role", "is_active"):
+        if changes.get(field) is None:
+            changes.pop(field, None)
+
+    if target.id == admin.id:
+        # An administrator editing their own account may fix their name or
+        # password, but cannot lock themselves out of administration.
+        if changes.get("role") is not None and changes["role"] != Role.ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="administrators cannot change their own role away from administrator",
+            )
+        if changes.get("is_active") is False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="administrators cannot deactivate their own account",
+            )
+
+    if new_password is not None:
+        problems = sessions.set_password(db, target, new_password)
+        if problems:
+            raise _policy_error(problems)
+        # A password an administrator sets is temporary: it kills every session
+        # on the account, clears any lockout, and must be changed at next login.
+        target.must_change_password = True
+        target.failed_login_count = 0
+        target.locked_until = None
+        sessions.revoke_all_for_user(db, target.id)
+
+    if changes.get("is_active") is False:
+        # Deactivation takes effect immediately, not at session expiry.
+        sessions.revoke_all_for_user(db, target.id)
+    elif changes.get("is_active") is True:
+        # Reactivation lifts a lockout so the account can actually sign in.
+        target.failed_login_count = 0
+        target.locked_until = None
+
+    before, after = audit.diff(target, changes, list(changes))
+    for field, value in changes.items():
+        setattr(target, field, value)
+    fields = set(changes)
+    if new_password is not None:
+        fields.add("password")
+    audit.record(
+        db,
+        action="user.update",
+        actor=admin,
+        actor_ip=client_ip(request),
+        object_type="user",
+        object_id=target.id,
+        detail={"fields": sorted(fields)},
+        before=before,
+        after=after,
+    )
+    db.commit()
+    db.refresh(target)
+    return target
 

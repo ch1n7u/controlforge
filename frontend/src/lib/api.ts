@@ -31,12 +31,15 @@ import type {
   ScopeCreate,
   ScopeEntry,
   ScopeEntryCreate,
+  ScopeUpdate,
   Setting,
   Target,
   TargetCreate,
   TestVersion,
   TestVersionCreate,
   User,
+  UserCreate,
+  UserUpdate,
   ValidationTest,
   ValidationTestCreate,
   ValidationTestDetail,
@@ -305,6 +308,10 @@ export const api = {
 
   // -- directory ----------------------------------------------------------
   users: () => get<User[]>('/users'),
+  /** Includes deactivated accounts, so an administrator can reactivate them. */
+  allUsers: () => get<User[]>('/users', { active_only: false }),
+  createUser: (payload: UserCreate) => post<User>('/users', payload),
+  updateUser: (id: number, payload: UserUpdate) => patch<User>(`/users/${id}`, payload),
 
   // -- registry -----------------------------------------------------------
   controls: (query?: { category?: string; q?: string; limit?: number; offset?: number }) =>
@@ -322,6 +329,8 @@ export const api = {
   scopes: (query?: { active?: boolean }) => get<Scope[]>('/scopes', query),
   scope: (id: number) => get<Scope>(`/scopes/${id}`),
   createScope: (payload: ScopeCreate) => post<Scope>('/scopes', payload),
+  updateScope: (id: number, payload: ScopeUpdate) => patch<Scope>(`/scopes/${id}`, payload),
+  deleteScope: (id: number) => del<void>(`/scopes/${id}`),
   addScopeEntry: (scopeId: number, payload: ScopeEntryCreate) =>
     post<ScopeEntry>(`/scopes/${scopeId}/entries`, payload),
   removeScopeEntry: (scopeId: number, entryId: number) =>

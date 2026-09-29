@@ -34,6 +34,7 @@ const NAV_GROUPS: Array<{ label?: string; items: Array<{ to: string; label: stri
     label: 'Administration',
     items: [
       { to: '/audit', label: 'Audit log' },
+      { to: '/users', label: 'Users' },
       { to: '/settings', label: 'Settings' },
     ],
   },
@@ -62,6 +63,7 @@ const TITLE_ROUTES: Array<[RegExp, string]> = [
   [/^\/scopes\/[^/]+/, 'Scope'],
   [/^\/scopes/, 'Scopes'],
   [/^\/audit/, 'Audit log'],
+  [/^\/users/, 'Users'],
   [/^\/settings/, 'Settings'],
 ]
 

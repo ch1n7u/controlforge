@@ -46,14 +46,18 @@ class ChangePasswordRequest(BaseModel):
 
 class UserCreateRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9._-]+$")
-    password: str | None = Field(default=None, min_length=1, max_length=256)
-    email: str | None = Field(default=None, max_length=255)
+    # Length/complexity is decided by check_password_policy, not the schema, so
+    # that every rejection reaches the client as one readable policy message.
+    # max_length still bounds the work scrypt can be asked to do.
+    password: str = Field(min_length=1, max_length=256)
     full_name: str | None = Field(default=None, max_length=255)
-    role: Role = Role.VIEWER
+    role: Role
 
 
 class UserUpdateRequest(BaseModel):
-    email: str | None = Field(default=None, max_length=255)
+    # All fields optional: only what the request actually carries is applied.
+    # full_name may be sent as an explicit null to clear it.
     full_name: str | None = Field(default=None, max_length=255)
     role: Role | None = None
     is_active: bool | None = None
+    password: str | None = Field(default=None, min_length=1, max_length=256)
