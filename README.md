@@ -1,13 +1,16 @@
 # CONTROLFORGE
 
-Continuous security **control validation and effectiveness testing**, running
-entirely on this machine. CONTROLFORGE is not a scanner with a web front end. It
-is a control-validation platform: a security control is defined once, expressed
-as one or more executable validation tests, run against authorized targets on a
-schedule or on demand, and the raw output of the underlying tool is turned into
-typed **facts** that declarative **assertions** evaluate into a tri-state result
-— **PASS**, **FAIL**, **INCONCLUSIVE**, **NOT APPLICABLE** — backed by evidence
-and, where an assertion fails, a finding with a remediation and retest workflow.
+CONTROLFORGE is a continuous security control validation and effectiveness
+testing platform, running entirely on this machine — no cloud service in the
+loop. It is not a scanner with a web front end.
+
+You define a security control once and express it as one or more executable
+validation tests. Those tests run against authorized targets on demand, or as a
+retest of an earlier finding. The raw output of the tool underneath is turned
+into typed **facts**, and declarative **assertions** evaluate those facts into a
+tri-state result — **PASS**, **FAIL**, **INCONCLUSIVE**, **NOT APPLICABLE** —
+each backed by evidence. A failed assertion opens a **finding** with a
+remediation and retest workflow.
 
 The tri-state evaluation is the point. "We could not determine whether the
 control holds" is a different answer from "the control holds", and a platform
