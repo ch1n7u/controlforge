@@ -6,6 +6,7 @@ import {
   EmptyState,
   ErrorNotice,
   Input,
+  LinkButton,
   Loading,
   PageHeader,
   Select,
@@ -16,6 +17,7 @@ import {
   Th,
   Toolbar,
 } from '../components/ui'
+import { useAuth } from '../auth/context'
 import { useDebounced } from '../hooks/useDebounced'
 import { api, qk } from '../lib/api'
 import { humanizeEnum } from '../lib/format'
@@ -29,6 +31,7 @@ function refTooltip(ref: FrameworkRef, framework: Framework | undefined): string
 }
 
 export function ControlsPage() {
+  const { isWriter } = useAuth()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const debouncedSearch = useDebounced(search, 300)
@@ -73,6 +76,13 @@ export function ControlsPage() {
       <PageHeader
         title="Controls"
         subtitle="The security controls this platform validates, with the framework references they map to."
+        actions={
+          isWriter ? (
+            <LinkButton to="/controls/new" variant="primary">
+              New control
+            </LinkButton>
+          ) : null
+        }
       />
 
       <Toolbar
@@ -122,7 +132,7 @@ export function ControlsPage() {
         (list.data.length === 0 && !hasFilters ? (
           <EmptyState
             title="No controls yet"
-            hint="Controls describe the secure state a target is held to. They come from the framework catalogue that ships with the platform."
+            hint="Controls describe the secure state a target is held to. Create the first one, then map it to the frameworks it satisfies."
           />
         ) : (
           <TableWrap>

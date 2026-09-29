@@ -8,7 +8,8 @@ has to arrive as a readable 400 at the moment a human is looking at the screen.
 from __future__ import annotations
 
 from app.models.enums import RunStatus, Severity
-from app.models.registry import Control, Scope
+from app.models.findings import Finding
+from app.models.registry import Control, Scope, Target
 from app.models.testing import ValidationRun, ValidationTest, ValidationTestVersion
 from tests.conftest import csrf_headers, login
 
@@ -184,6 +185,101 @@ def test_duplicate_target_endpoint_conflicts(admin_client):
         admin_client.post("/api/targets", json=payload, headers=csrf_headers(admin_client)).status_code
         == 409
     )
+
+
+def make_target(client, **overrides) -> dict:
+    payload = {"name": "used-target", "host": "127.0.0.1", "port": 8081}
+    payload.update(overrides)
+    response = client.post("/api/targets", json=payload, headers=csrf_headers(client))
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def make_test_chain(db):
+    """The control/test/version chain that a run or a finding must hang off."""
+    control = Control(key="ctl-delete", title="Deletion control", default_severity=Severity.MEDIUM)
+    db.add(control)
+    db.flush()
+    test = ValidationTest(
+        key="del-guard",
+        name="Deletion guard",
+        control_id=control.id,
+        tags=[],
+        target_selector={},
+        enabled=True,
+        current_version=1,
+    )
+    db.add(test)
+    db.flush()
+    version = ValidationTestVersion(
+        test_id=test.id,
+        version=1,
+        engine_id="http_headers",
+        engine_params={},
+        assertion={},
+        control_id=control.id,
+        severity=Severity.MEDIUM,
+    )
+    db.add(version)
+    db.flush()
+    return control, test, version
+
+
+def test_a_target_with_recorded_runs_refuses_deletion(admin_client, db):
+    target = make_target(admin_client)
+    _, test, version = make_test_chain(db)
+    run = ValidationRun(
+        test_id=test.id,
+        test_version_id=version.id,
+        target_id=target["id"],
+        engine_id=version.engine_id,
+    )
+    db.add(run)
+    db.commit()
+
+    refused = admin_client.delete(
+        f"/api/targets/{target['id']}", headers=csrf_headers(admin_client)
+    )
+    assert refused.status_code == 409
+    assert "1 recorded run(s)" in refused.json()["detail"]
+    assert "disable it instead" in refused.json()["detail"]
+    assert db.get(Target, target["id"]) is not None
+
+    # The run was the only blocker: once its history is gone, so is the target.
+    db.delete(run)
+    db.commit()
+    assert (
+        admin_client.delete(
+            f"/api/targets/{target['id']}", headers=csrf_headers(admin_client)
+        ).status_code
+        == 204
+    )
+    db.expire_all()
+    assert db.get(Target, target["id"]) is None
+
+
+def test_a_target_with_findings_refuses_deletion(admin_client, db):
+    target = make_target(admin_client, name="finding-target", port=8082)
+    control, test, version = make_test_chain(db)
+    finding = Finding(
+        fingerprint="d" * 64,
+        title="Open finding on the target",
+        control_id=control.id,
+        test_id=test.id,
+        test_version_id=version.id,
+        target_id=target["id"],
+        assertion={},
+        severity=Severity.HIGH,
+    )
+    db.add(finding)
+    db.commit()
+
+    refused = admin_client.delete(
+        f"/api/targets/{target['id']}", headers=csrf_headers(admin_client)
+    )
+    assert refused.status_code == 409
+    assert "1 finding(s)" in refused.json()["detail"]
+    assert db.get(Target, target["id"]) is not None
 
 
 # -------------------------------------------------------------------- scopes --

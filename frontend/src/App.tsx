@@ -9,7 +9,9 @@ import { EvidenceDetailPage } from './pages/EvidenceDetailPage'
 import { EvidencePage } from './pages/EvidencePage'
 import { FindingDetailPage } from './pages/FindingDetailPage'
 import { FindingsPage } from './pages/FindingsPage'
+import { FrameworksPage } from './pages/FrameworksPage'
 import { LoginPage } from './pages/LoginPage'
+import { NewControlPage } from './pages/NewControlPage'
 import { NewScopePage } from './pages/NewScopePage'
 import { NewTargetPage } from './pages/NewTargetPage'
 import { NewTestPage } from './pages/NewTestPage'
@@ -41,7 +43,9 @@ export default function App() {
             <Route index element={<Navigate to="/overview" replace />} />
             <Route path="overview" element={<DashboardPage />} />
             <Route path="controls" element={<ControlsPage />} />
+            <Route path="controls/new" element={<NewControlPage />} />
             <Route path="controls/:id" element={<ControlDetailPage />} />
+            <Route path="frameworks" element={<FrameworksPage />} />
             <Route path="targets" element={<TargetsPage />} />
             <Route path="targets/new" element={<NewTargetPage />} />
             <Route path="targets/:id" element={<TargetDetailPage />} />

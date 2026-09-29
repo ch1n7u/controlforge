@@ -25,6 +25,7 @@ const NAV_GROUPS: Array<{ label?: string; items: Array<{ to: string; label: stri
     label: 'Configuration',
     items: [
       { to: '/controls', label: 'Controls' },
+      { to: '/frameworks', label: 'Frameworks' },
       { to: '/tests', label: 'Tests' },
       { to: '/targets', label: 'Targets' },
       { to: '/scopes', label: 'Scopes' },
@@ -51,8 +52,10 @@ const TITLE_ROUTES: Array<[RegExp, string]> = [
   [/^\/findings/, 'Findings'],
   [/^\/evidence\/[^/]+/, 'Evidence item'],
   [/^\/evidence/, 'Evidence'],
+  [/^\/controls\/new/, 'New control'],
   [/^\/controls\/[^/]+/, 'Control'],
   [/^\/controls/, 'Controls'],
+  [/^\/frameworks/, 'Frameworks'],
   [/^\/tests\/new/, 'New test'],
   [/^\/tests\/[^/]+/, 'Test'],
   [/^\/tests/, 'Tests'],

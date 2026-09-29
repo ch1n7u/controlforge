@@ -20,6 +20,7 @@ from app.api.deps import client_ip, require_admin, require_user, require_writer
 from app.core import audit
 from app.db import get_db
 from app.models.auth import User
+from app.models.findings import Finding
 from app.models.registry import (
     Control,
     Framework,
@@ -29,7 +30,7 @@ from app.models.registry import (
     Target,
     TargetScope,
 )
-from app.models.testing import ValidationTest
+from app.models.testing import ValidationRun, ValidationTest
 from app.queue import jobs
 from app.schemas.registry import (
     ControlCreate,
@@ -523,6 +524,20 @@ def delete_target(
     target = db.get(Target, target_id)
     if target is None:
         raise _not_found("target", target_id)
+    recorded = db.execute(
+        select(func.count())
+        .select_from(ValidationRun)
+        .where(ValidationRun.target_id == target_id)
+    ).scalar()
+    found = db.execute(
+        select(func.count()).select_from(Finding).where(Finding.target_id == target_id)
+    ).scalar()
+    if recorded or found:
+        raise _conflict(
+            f"target {target.name!r} has {recorded} recorded run(s) and {found} finding(s); "
+            "disable it instead so its history stays readable"
+        )
+
     audit.record(
         db,
         action="target.delete",

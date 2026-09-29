@@ -96,6 +96,23 @@ export interface FrameworkRef {
   title: string | null
 }
 
+export interface FrameworkCreate {
+  key: string
+  name: string
+  version?: string
+  description?: string
+  source?: string
+  enabled?: boolean
+}
+
+export interface FrameworkUpdate {
+  name?: string
+  version?: string | null
+  description?: string | null
+  source?: string | null
+  enabled?: boolean
+}
+
 export interface Control {
   id: number
   key: string
@@ -108,6 +125,33 @@ export interface Control {
   enabled: boolean
   created_at: string
   refs: FrameworkRef[]
+}
+
+export interface ControlCreate {
+  key: string
+  title: string
+  category?: string
+  description?: string
+  expected_state?: string
+  default_severity?: Severity
+  remediation?: string
+  enabled?: boolean
+}
+
+export interface ControlUpdate {
+  title?: string
+  category?: string | null
+  description?: string | null
+  expected_state?: string | null
+  default_severity?: Severity
+  remediation?: string | null
+  enabled?: boolean
+}
+
+export interface FrameworkRefCreate {
+  framework_id: number
+  ref_code: string
+  title?: string
 }
 
 export interface Target {
@@ -131,6 +175,19 @@ export interface TargetCreate {
   host: string
   target_type?: TargetType
   /** 0 (or omitted) means no port, which is legitimate for a host-level target. */
+  port?: number
+  protocol?: string
+  path?: string
+  tags?: string[]
+  criticality?: Severity
+  owner?: string | null
+  notes?: string | null
+  enabled?: boolean
+}
+
+export interface TargetUpdate {
+  name?: string
+  host?: string
   port?: number
   protocol?: string
   path?: string

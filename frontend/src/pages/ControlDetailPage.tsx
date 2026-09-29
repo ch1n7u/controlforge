@@ -1,33 +1,43 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { RatioBar } from '../components/charts'
 import {
   AssertionBadge,
   Badge,
+  Button,
+  Checkbox,
   EmptyState,
   ErrorNotice,
+  Field,
   FindingStatusBadge,
+  Input,
   KeyValue,
   LinkButton,
   Loading,
   PageHeader,
   Panel,
   RunStatusBadge,
+  Select,
   SeverityBadge,
   TableEmptyRow,
   TableWrap,
   Td,
+  Textarea,
   Th,
 } from '../components/ui'
 import { api, asPage, fetchFindings, qk } from '../lib/api'
-import { fmtRelative, humanizeEnum } from '../lib/format'
-import type { RunSummary } from '../lib/types'
+import { fmtDateTime, fmtRelative, humanizeEnum } from '../lib/format'
+import { severities } from '../lib/tones'
+import type { Control, ControlUpdate, FrameworkRef, FrameworkRefCreate, RunSummary, Severity } from '../lib/types'
 
 export function ControlDetailPage() {
   const params = useParams()
   const controlId = Number(params.id)
-  const { isWriter } = useAuth()
+  const { isWriter, isAdmin } = useAuth()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const control = useQuery({
     queryKey: qk.control(controlId),
@@ -55,6 +65,75 @@ export function ControlDetailPage() {
     staleTime: 30_000,
     retry: false,
   })
+
+  const [refFrameworkId, setRefFrameworkId] = useState('')
+  const [refCode, setRefCode] = useState('')
+  const [refTitle, setRefTitle] = useState('')
+  const [refError, setRefError] = useState<string | null>(null)
+
+  const updateControl = useMutation({
+    mutationFn: (payload: ControlUpdate) => api.updateControl(controlId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.control(controlId) })
+      void queryClient.invalidateQueries({ queryKey: qk.controls() })
+    },
+  })
+
+  const removeControl = useMutation({
+    mutationFn: () => api.deleteControl(controlId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.controls() })
+      navigate('/controls')
+    },
+  })
+
+  const addRef = useMutation({
+    mutationFn: (payload: FrameworkRefCreate) => api.addControlRef(controlId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.control(controlId) })
+      void queryClient.invalidateQueries({ queryKey: qk.controls() })
+      setRefCode('')
+      setRefTitle('')
+      setRefError(null)
+    },
+  })
+
+  const removeRef = useMutation({
+    mutationFn: (refId: number) => api.removeControlRef(controlId, refId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.control(controlId) })
+      void queryClient.invalidateQueries({ queryKey: qk.controls() })
+    },
+  })
+
+  function submitRef(): void {
+    if (refFrameworkId === '') {
+      setRefError('Choose the framework this reference belongs to.')
+      return
+    }
+    if (refCode.trim() === '') {
+      setRefError('Enter the framework reference code, for example 6.1.1.')
+      return
+    }
+    setRefError(null)
+    const payload: FrameworkRefCreate = {
+      framework_id: Number(refFrameworkId),
+      ref_code: refCode.trim(),
+    }
+    if (refTitle.trim() !== '') payload.title = refTitle.trim()
+    addRef.mutate(payload)
+  }
+
+  function confirmRemoveRef(ref: FrameworkRef): void {
+    const framework = frameworkById.get(ref.framework_id)
+    if (
+      window.confirm(
+        `Remove reference ${ref.ref_code}${framework ? ` (${framework.key})` : ''}? This removes only the framework mapping; the control and its tests are untouched.`,
+      )
+    ) {
+      removeRef.mutate(ref.id)
+    }
+  }
 
   const testIds = tests.data?.map((test) => test.id) ?? []
   const runQueries = useQueries({
@@ -162,10 +241,88 @@ export function ControlDetailPage() {
                   <span className="font-mono text-accent">{ref.ref_code}</span>
                   <span className="ml-2 text-mute">{ref.title ?? ''}</span>
                   {framework && <span className="ml-2 text-dim">{framework.key}</span>}
+                  {isWriter && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      className="ml-2"
+                      disabled={removeRef.isPending}
+                      onClick={() => confirmRemoveRef(ref)}
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </li>
               )
             })}
           </ul>
+        )}
+        {removeRef.isError && (
+          <div className="mt-3">
+            <ErrorNotice title="Remove reference failed" error={removeRef.error} />
+          </div>
+        )}
+        {isWriter && (
+          <div className="mt-3 border-t border-edge pt-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Framework" required>
+                <Select
+                  value={refFrameworkId}
+                  onChange={(e) => setRefFrameworkId(e.target.value)}
+                >
+                  <option value="">
+                    {frameworks.isPending ? 'Loading frameworks...' : 'Choose a framework'}
+                  </option>
+                  {(frameworks.data ?? []).map((framework) => (
+                    <option key={framework.id} value={framework.id}>
+                      {framework.name}
+                      {framework.version ? ` ${framework.version}` : ''}
+                      {framework.enabled ? '' : ' (disabled)'}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="Reference code"
+                required
+                hint="The clause this control maps to in the framework, e.g. 6.1.1."
+              >
+                <Input
+                  value={refCode}
+                  onChange={(e) => setRefCode(e.target.value)}
+                  placeholder="6.1.1"
+                  maxLength={64}
+                />
+              </Field>
+              <Field label="Title" hint="Optional. The clause title, where the framework has one.">
+                <Input
+                  value={refTitle}
+                  onChange={(e) => setRefTitle(e.target.value)}
+                  maxLength={255}
+                />
+              </Field>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[12px] text-dim">
+                A reference code is unique within a framework: adding the same code to the same
+                framework twice is refused. Disabled frameworks are marked but can still be
+                mapped.
+              </span>
+              <Button variant="primary" disabled={addRef.isPending} onClick={submitRef}>
+                {addRef.isPending ? 'Adding...' : 'Add reference'}
+              </Button>
+            </div>
+            {refError !== null && (
+              <div className="mt-3">
+                <ErrorNotice error={new Error(refError)} />
+              </div>
+            )}
+            {addRef.isError && (
+              <div className="mt-3">
+                <ErrorNotice title="Add reference failed" error={addRef.error} />
+              </div>
+            )}
+          </div>
         )}
       </Panel>
 
@@ -326,6 +483,209 @@ export function ControlDetailPage() {
             </TableWrap>
           ))}
       </Panel>
+
+      {isWriter && (
+        <EditControlForm
+          key={controlFormKey(c)}
+          control={c}
+          saving={updateControl.isPending}
+          isError={updateControl.isError}
+          error={updateControl.error}
+          isSuccess={updateControl.isSuccess}
+          onSubmit={(payload) => updateControl.mutate(payload)}
+        />
+      )}
+
+      {isAdmin && (
+        <Panel title="Delete control">
+          <p className="text-[13px] text-mute">
+            Deleting this control is an administrator action. It is refused while a validation
+            test still points at it or a framework reference is still mapped to it: delete or
+            retarget those tests and remove those references first. The deletion is recorded in
+            the audit log.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[12px] text-dim">
+              There is no undoing this; the control's key becomes free for a new control.
+            </span>
+            <Button
+              variant="danger"
+              disabled={removeControl.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Delete control "${c.key}"? This cannot be undone.`,
+                  )
+                ) {
+                  removeControl.mutate()
+                }
+              }}
+            >
+              {removeControl.isPending ? 'Deleting...' : 'Delete control'}
+            </Button>
+          </div>
+          {removeControl.isError && (
+            <div className="mt-3">
+              <ErrorNotice title="Delete control failed" error={removeControl.error} />
+            </div>
+          )}
+        </Panel>
+      )}
     </div>
+  )
+}
+
+/**
+ * Controls carry no updated_at, so the stored field values stand in for one: the
+ * form remounts, re-reading the saved values, whenever they change.
+ */
+function controlFormKey(control: Control): string {
+  return [
+    control.title,
+    control.category ?? '',
+    control.description ?? '',
+    control.expected_state ?? '',
+    control.default_severity,
+    control.remediation ?? '',
+    control.enabled,
+  ].join('|')
+}
+
+function EditControlForm({
+  control,
+  saving,
+  isError,
+  error,
+  isSuccess,
+  onSubmit,
+}: {
+  control: Control
+  saving: boolean
+  isError: boolean
+  error: unknown
+  isSuccess: boolean
+  onSubmit: (payload: ControlUpdate) => void
+}) {
+  const [title, setTitle] = useState(control.title)
+  const [category, setCategory] = useState(control.category ?? '')
+  const [description, setDescription] = useState(control.description ?? '')
+  const [expectedState, setExpectedState] = useState(control.expected_state ?? '')
+  const [severity, setSeverity] = useState<Severity>(control.default_severity)
+  const [remediation, setRemediation] = useState(control.remediation ?? '')
+  const [enabled, setEnabled] = useState(control.enabled)
+  const [localError, setLocalError] = useState<string | null>(null)
+
+  function submit(): void {
+    const trimmedTitle = title.trim()
+    if (trimmedTitle === '') {
+      setLocalError('Enter a title for this control.')
+      return
+    }
+    setLocalError(null)
+    onSubmit({
+      title: trimmedTitle,
+      category: category.trim() === '' ? null : category.trim(),
+      description: description.trim() === '' ? null : description.trim(),
+      expected_state: expectedState.trim() === '' ? null : expectedState.trim(),
+      default_severity: severity,
+      remediation: remediation.trim() === '' ? null : remediation.trim(),
+      enabled,
+    })
+  }
+
+  return (
+    <Panel title="Edit control">
+      <KeyValue
+        columns={2}
+        items={[
+          ['Key', <span key="key" className="font-mono text-accent">{control.key}</span>],
+          ['Created', fmtDateTime(control.created_at)],
+        ]}
+      />
+      <p className="mt-2 text-[12px] text-dim">
+        The key is the stable identifier tests and the API refer to; it cannot be changed after
+        creation.
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Field label="Title" required>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={255} />
+        </Field>
+        <Field label="Category" hint="Leave empty to remove the category.">
+          <Input
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            maxLength={80}
+          />
+        </Field>
+      </div>
+      <div className="mt-3">
+        <Field label="Description" hint="Leave empty to remove the description.">
+          <Textarea
+            rows={2}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </Field>
+      </div>
+      <div className="mt-3">
+        <Field label="Expected state" hint="Leave empty to remove the expected state.">
+          <Textarea
+            rows={2}
+            value={expectedState}
+            onChange={(e) => setExpectedState(e.target.value)}
+          />
+        </Field>
+      </div>
+      <div className="mt-3">
+        <Field label="Remediation guidance" hint="Leave empty to remove the guidance.">
+          <Textarea
+            rows={3}
+            value={remediation}
+            onChange={(e) => setRemediation(e.target.value)}
+          />
+        </Field>
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Field label="Default severity">
+          <Select value={severity} onChange={(e) => setSeverity(e.target.value as Severity)}>
+            {severities.map((level) => (
+              <option key={level} value={level}>
+                {level}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <div>
+          <Checkbox label="Enabled" checked={enabled} onChange={setEnabled} />
+          <p className="mt-1 text-[12px] text-dim">
+            A disabled control stays in the catalogue, marked as disabled in lists and on its
+            page.
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[12px] text-dim">
+          An emptied text field is saved as removed, not as an empty string.
+        </span>
+        <Button variant="primary" disabled={saving} onClick={submit}>
+          {saving ? 'Saving...' : 'Save control'}
+        </Button>
+      </div>
+      {localError !== null && (
+        <div className="mt-3">
+          <ErrorNotice error={new Error(localError)} />
+        </div>
+      )}
+      {isError && (
+        <div className="mt-3">
+          <ErrorNotice title="Save control failed" error={error} />
+        </div>
+      )}
+      {isSuccess && (
+        <div className="mt-3 border border-pass/40 bg-pass/5 p-2 text-[12px] text-pass">
+          Control saved.
+        </div>
+      )}
+    </Panel>
   )
 }

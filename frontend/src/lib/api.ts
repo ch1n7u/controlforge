@@ -10,6 +10,8 @@
 import type {
   AuditEntry,
   Control,
+  ControlCreate,
+  ControlUpdate,
   DashboardSummary,
   DashboardTrend,
   Engine,
@@ -21,6 +23,10 @@ import type {
   FindingSummaryStats,
   FindingUpdate,
   Framework,
+  FrameworkCreate,
+  FrameworkRef,
+  FrameworkRefCreate,
+  FrameworkUpdate,
   Health,
   LogLine,
   MeResponse,
@@ -35,6 +41,7 @@ import type {
   Setting,
   Target,
   TargetCreate,
+  TargetUpdate,
   TestVersion,
   TestVersionCreate,
   User,
@@ -305,6 +312,10 @@ export const api = {
   // -- catalogue ----------------------------------------------------------
   engines: () => get<Engine[]>('/engines'),
   frameworks: () => get<Framework[]>('/frameworks'),
+  createFramework: (payload: FrameworkCreate) => post<Framework>('/frameworks', payload),
+  updateFramework: (id: number, payload: FrameworkUpdate) =>
+    patch<Framework>(`/frameworks/${id}`, payload),
+  deleteFramework: (id: number) => del<void>(`/frameworks/${id}`),
 
   // -- directory ----------------------------------------------------------
   users: () => get<User[]>('/users'),
@@ -317,10 +328,20 @@ export const api = {
   controls: (query?: { category?: string; q?: string; limit?: number; offset?: number }) =>
     get<Control[]>('/controls', query),
   control: (id: number) => get<Control>(`/controls/${id}`),
+  createControl: (payload: ControlCreate) => post<Control>('/controls', payload),
+  updateControl: (id: number, payload: ControlUpdate) =>
+    patch<Control>(`/controls/${id}`, payload),
+  deleteControl: (id: number) => del<void>(`/controls/${id}`),
+  addControlRef: (controlId: number, payload: FrameworkRefCreate) =>
+    post<FrameworkRef>(`/controls/${controlId}/refs`, payload),
+  removeControlRef: (controlId: number, refId: number) =>
+    del<void>(`/controls/${controlId}/refs/${refId}`),
   targets: (query?: { enabled?: boolean; tag?: string; limit?: number; offset?: number }) =>
     get<Target[]>('/targets', query),
   target: (id: number) => get<Target>(`/targets/${id}`),
   createTarget: (payload: TargetCreate) => post<Target>('/targets', payload),
+  updateTarget: (id: number, payload: TargetUpdate) => patch<Target>(`/targets/${id}`, payload),
+  deleteTarget: (id: number) => del<void>(`/targets/${id}`),
   targetScopes: (id: number) => get<Scope[]>(`/targets/${id}/scopes`),
   linkTargetScope: (targetId: number, scopeId: number) =>
     put<void>(`/targets/${targetId}/scopes/${scopeId}`, undefined),
